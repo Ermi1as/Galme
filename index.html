@@ -1546,9 +1546,15 @@
 
         function updateEmailConfigBadges() {
             const configured = Boolean(emailConfig.serviceId && emailConfig.templateId && emailConfig.publicKey);
-            document.getElementById('smtpStatusBadge').textContent = configured ? 'Connected (Live Email)' : 'Setup Required';
-            document.getElementById('smtpStatusBadge').style.color = configured ? '#16a34a' : '#dc2626';
+            document.getElementById('smtpStatusBadge').textContent = configured ? 'Connected (Live Email)' : 'Direct Mode (Optional EmailJS)';
+            document.getElementById('smtpStatusBadge').style.color = configured ? '#16a34a' : '#2563eb';
             document.getElementById('settingsEmailStatus').textContent = configured ? 'Connected' : 'Configure';
+            const btnSpan = document.querySelector('#sendOtpSubmitBtn span');
+            if (btnSpan) {
+                btnSpan.textContent = configured
+                    ? 'Send Verification Code to Email'
+                    : (isSignupMode ? 'Create Account' : 'Sign In');
+            }
         }
 
         function renderSavedAccounts() {
@@ -1618,6 +1624,7 @@
             document.getElementById('tabSignupBtn').classList.remove('active');
             document.getElementById('signupNameField').style.display = 'none';
             document.getElementById('authFullName').required = false;
+            updateEmailConfigBadges();
         });
 
         document.getElementById('tabSignupBtn').addEventListener('click', () => {
@@ -1626,6 +1633,7 @@
             document.getElementById('tabLoginBtn').classList.remove('active');
             document.getElementById('signupNameField').style.display = 'block';
             document.getElementById('authFullName').required = true;
+            updateEmailConfigBadges();
         });
 
         // Step 1 Submit: Validate Credentials & Send Real Email OTP
@@ -1635,9 +1643,38 @@
             const password = document.getElementById('authPassword').value.trim();
             const fullName = document.getElementById('authFullName').value.trim();
 
-            if (!emailConfig.serviceId || !emailConfig.templateId || !emailConfig.publicKey) {
-                showToast('Please configure your EmailJS keys first to send real email codes.');
-                document.getElementById('emailConfigModal').classList.add('open');
+            const hasEmailService = Boolean(emailConfig.serviceId && emailConfig.templateId && emailConfig.publicKey);
+            if (!hasEmailService) {
+                if (isSignupMode) {
+                    if (!fullName) {
+                        showToast('Please enter your full name.');
+                        return;
+                    }
+                    if (usersDb[email]) {
+                        showToast('An account with this email already exists. Please Sign In.');
+                        return;
+                    }
+                    usersDb[email] = {
+                        name: fullName,
+                        password: password,
+                        verified: true,
+                        createdAt: new Date().toISOString()
+                    };
+                    localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
+                    currentUserEmail = email;
+                    localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail);
+                    loadUserWorkspace(currentUserEmail);
+                    showToast('Account created! (Tip: Add EmailJS keys in Settings for email OTP)');
+                } else {
+                    if (!usersDb[email] || usersDb[email].password !== password) {
+                        showToast('Invalid email or password.');
+                        return;
+                    }
+                    currentUserEmail = email;
+                    localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail);
+                    loadUserWorkspace(currentUserEmail);
+                    showToast('Signed in successfully!');
+                }
                 return;
             }
 
@@ -2386,9 +2423,7 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const lines = evt.target.result.split(/
-?
-/).slice(1).filter(Boolean);
+                const lines = evt.target.result.split(/\r?\n/).slice(1).filter(Boolean);
                 const imported = [];
                 lines.forEach((line, i) => {
                     const parts = line.split(',');
