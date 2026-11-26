@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Galmee Herregaa — Expense & Bookkeeping</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" href="./icon-192.png">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <meta name="theme-color" content="#183e8a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --header-bg: #183e8a;
+            --hero-bg: #0d2142;
+            --hero-divider: #1e3a5f;
+            --bg: #f4f6f9;
+            --card-bg: #ffffff;
+            --icon-box-bg: #eef2f6;
+            --icon-color: #183e8a;
+            --text: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --income: #16a34a;
+            --expense: #dc2626;
+            --fab-bg: #183e8a;
+            --nav-bg: #ffffff;
+            --nav-inactive: #6b7280;
+            --nav-active: #183e8a;
+            --shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        }
+
+        body.night-mode {
+            --header-bg: #0f172a;
+            --hero-bg: #091326;
+            --hero-divider: #1e293b;
+            --bg: #0b1120;
+            --card-bg: #1e293b;
+            --icon-box-bg: #334155;
+            --icon-color: #93c5fd;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --fab-bg: #2563eb;
+            --nav-bg: #1e293b;
+            --nav-inactive: #94a3b8;
+            --nav-active: #60a5fa;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Ethiopic", Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding-bottom: 84px;
+            overscroll-behavior-y: contain;
+            user-select: none;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        input, select { user-select: text; }
+
+        /* Top App Bar */
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: var(--header-bg);
+            color: #ffffff;
+            height: 56px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        .header-btn:active { background: rgba(255, 255, 255, 0.14); }
+
+        .header-title {
+            font-size: 1.08rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        /* Views */
+        .view-section {
+            display: none;
+            padding: 16px;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Hero Balance Card (Screenshot 1) */
+        .hero-card {
+            background: var(--hero-bg);
+            color: #ffffff;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 24px rgba(13, 33, 66, 0.22);
+        }
+
+        .hero-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .hero-label {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .eye-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero-balance {
+            font-size: 1.85rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 18px;
+        }
+
+        .hero-divider {
+            height: 1px;
+            background: var(--hero-divider);
+            margin-bottom: 16px;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-circle {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stat-text span {
+            display: block;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .stat-text strong {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        /* Section Header & Record Cards */
+        .section-heading {
+            font-size: 1.02rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .record-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .record-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .record-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        .cat-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--icon-box-bg);
+            color: var(--icon-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .record-info {
+            overflow: hidden;
+        }
+
+        .record-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .record-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .record-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .amount-pos {
+            color: var(--income);
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+
+        .amount-neg {
+            color: var(--expense);
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+
+        .trash-btn {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: var(--expense);
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        /* Report View (Screenshot 2) */
+        .segmented-control {
+            background: var(--card-bg);
+            border-radius: 999px;
+            padding: 4px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .seg-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            padding: 9px 6px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .seg-btn.active {
+            background: var(--header-bg);
+            color: #ffffff;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px 12px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .kpi-card span {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .kpi-card strong {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 18px 16px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .chart-title {
+            text-align: center;
+            font-size: 0.98rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        .pie-layout {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .legend-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Budget Sub-tabs (Screenshot 3) */
+        .sub-tabs {
+            background: var(--card-bg);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+            margin: -16px -16px 16px -16px;
+        }
+
+        .sub-tab-btn {
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 13px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .sub-tab-btn.active {
+            color: var(--header-bg);
+            border-bottom-color: var(--header-bg);
+        }
+
+        body.night-mode .sub-tab-btn.active {
+            color: #60a5fa;
+            border-bottom-color: #60a5fa;
+        }
+
+        /* Events Empty State (Screenshot 4) */
+        .empty-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            text-align: center;
+            color: var(--text-muted);
+            gap: 12px;
+        }
+
+        /* Settings View (Screenshot 5) */
+        .settings-group {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .settings-group-label {
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-row:last-child {
+            border-bottom: none;
+            padding-bottom: 2px;
+        }
+
+        .settings-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .settings-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--icon-box-bg);
+            color: var(--icon-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-name {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .settings-val {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: .25s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .25s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .slider {
+            background-color: var(--header-bg);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Floating Action Button (+) */
+        .fab {
+            position: fixed;
+            bottom: 78px;
+            right: max(18px, calc(50vw - 222px));
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: var(--fab-bg);
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 6px 18px rgba(24, 62, 138, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.65rem;
+            cursor: pointer;
+            z-index: 45;
+            transition: transform 0.15s;
+        }
+
+        .fab:active { transform: scale(0.94); }
+
+        /* Bottom 5-Tab Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            height: 64px;
+            background: var(--nav-bg);
+            border-top: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            z-index: 50;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-item {
+            background: none;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            color: var(--nav-inactive);
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--nav-active);
+        }
+
+        /* Navigation Drawer (Screenshot 6) */
+        .drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            z-index: 80;
+            display: none;
+        }
+
+        .drawer-backdrop.open { display: block; }
+
+        .side-drawer {
+            position: fixed;
+            top: 0;
+            left: max(0px, calc(50vw - 240px));
+            width: 295px;
+            max-width: 80vw;
+            height: 100dvh;
+            background: var(--card-bg);
+            z-index: 90;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateX(-100%);
+            transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.26s;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 6px 0 28px rgba(0, 0, 0, 0.24);
+        }
+
+        .side-drawer.open {
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            background: #0d2142;
+            color: #ffffff;
+            padding: 32px 20px 24px;
+            border-bottom-right-radius: 26px;
+        }
+
+        .drawer-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.14);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .drawer-header h2 {
+            font-size: 1.25rem;
+            font-weight: 800;
+        }
+
+        .drawer-header p {
+            font-size: 0.82rem;
+            color: #cbd5e1;
+            margin-top: 2px;
+        }
+
+        .drawer-body {
+            padding: 18px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .drawer-footer {
+            text-align: center;
+            padding: 14px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        /* Modal Sheet */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 100;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal-sheet {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 480px;
+            border-top-left-radius: 22px;
+            border-top-right-radius: 22px;
+            padding: 20px;
+            box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.18);
+            animation: slideUp 0.2s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .modal-head h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .close-modal {
+            background: var(--icon-box-bg);
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: var(--text);
+        }
+
+        .form-field {
+            margin-bottom: 12px;
+        }
+
+        .form-field label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .form-field input, .form-field select {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: var(--header-bg);
+            color: #ffffff;
+            border: none;
+            padding: 13px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+
+        /* PIN Lock Screen */
+        .pin-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--hero-bg);
+            color: #ffffff;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .pin-overlay.open { display: flex; }
+
+        .pin-input {
+            width: 180px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: #ffffff;
+            font-size: 1.5rem;
+            letter-spacing: 10px;
+            text-align: center;
+            margin: 16px 0;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(40px);
+            background: #0f172a;
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s;
+            z-index: 300;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <header class="app-header">
+        <button class="header-btn" id="leftHeaderBtn" aria-label="Menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="header-title" id="headerTitle">Records</div>
+        <button class="header-btn" id="rightHeaderBtn" aria-label="Action" style="visibility: hidden;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
+    </header>
+
+    <!-- SIDE NAVIGATION DRAWER (Screenshot 6) -->
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <aside class="side-drawer" id="sideDrawer">
+        <div class="drawer-header">
+            <div class="drawer-logo">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+            </div>
+            <h2>Ethio Expense</h2>
+            <p>Track with</p>
+        </div>
+        <div class="drawer-body">
+            <div class="settings-group-label" data-i18n="actions">ACTIONS</div>
+            <div class="settings-group">
+                <div class="settings-row" id="drawerExportBtn">
+                    <div class="settings-left">
+                        <div class="settings-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <span class="settings-name" data-i18n="exportRecord">Export Record</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group-label" data-i18n="preferences">PREFERENCES</div>
+            <div class="settings-group">
+                <div class="settings-row">
+                    <div class="settings-left">
+                        <div class="settings-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        </div>
+                        <span class="settings-name" data-i18n="nightMode">Night Mode</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="nightModeToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group-label" data-i18n="supportLegal">SUPPORT & LEGAL</div>
+            <div class="settings-group">
+                <div class="settings-row" onclick="showToast('Thank you for rating Galmee Herregaa!')">
+                    <div class="settings-left">
+                        <div class="settings-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </div>
+                        <span class="settings-name" data-i18n="rateUs">Rate Us</span>
+                    </div>
+                </div>
+                <div class="settings-row" onclick="showToast('All records are stored locally on your device.')">
+                    <div class="settings-left">
+                        <div class="settings-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <span class="settings-name" data-i18n="privacyPolicy">Privacy Policy</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="drawer-footer">App Version 1.0.0</div>
+    </aside>
+
+    <!-- 1. RECORDS VIEW (Screenshot 1) -->
+    <section id="view-records" class="view-section active">
+        <div class="hero-card">
+            <div class="hero-top">
+                <span class="hero-label" data-i18n="totalBalance">Total Balance</span>
+                <button class="eye-btn" id="toggleBalanceVis" aria-label="Toggle Visibility">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+            <div class="hero-balance" id="heroBalance">606.00 ETB</div>
+            <div class="hero-divider"></div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-circle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                    </div>
+                    <div class="stat-text">
+                        <span data-i18n="income">Income</span>
+                        <strong id="heroIncome">4,296.00 ETB</strong>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-circle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                    </div>
+                    <div class="stat-text">
+                        <span data-i18n="expense">Expense</span>
+                        <strong id="heroExpense">3,690.00 ETB</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-heading">
+            <span data-i18n="recentRecords">Recent Records</span>
+        </div>
+        <div class="record-list" id="recentRecordsList"></div>
+    </section>
+
+    <!-- 2. REPORT VIEW (Screenshot 2) -->
+    <section id="view-report" class="view-section">
+        <div class="segmented-control">
+            <button class="seg-btn" data-period="weekly" data-i18n="weekly">Weekly</button>
+            <button class="seg-btn active" data-period="monthly" data-i18n="monthly">Monthly</button>
+            <button class="seg-btn" data-period="yearly" data-i18n="yearly">Yearly</button>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span data-i18n="totalSpent">Total Spent</span>
+                <strong id="reportTotalSpent">3,690.00 ETB</strong>
+            </div>
+            <div class="kpi-card">
+                <span data-i18n="dailyAvg">Daily</span>
+                <strong id="reportDailyAvg">141.92 ETB</strong>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-title" data-i18n="spendingByCategory">Spending by Category</div>
+            <canvas id="barChartCanvas" width="400" height="210" style="width:100%; height:210px;"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-title" data-i18n="expenseDistribution">Expense Distribution</div>
+            <div class="pie-layout">
+                <canvas id="pieChartCanvas" width="170" height="170" style="width:170px; height:170px;"></canvas>
+                <div class="legend-list" id="pieLegend"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. BUDGET / LEDGER VIEW (Screenshot 3) -->
+    <section id="view-budget" class="view-section">
+        <div class="sub-tabs">
+            <button class="sub-tab-btn active" data-budget-tab="expense" data-i18n="expenses">Expenses</button>
+            <button class="sub-tab-btn" data-budget-tab="income" data-i18n="income">Income</button>
+        </div>
+        <div class="record-list" id="budgetRecordsList"></div>
+    </section>
+
+    <!-- 4. EVENTS VIEW (Screenshot 4) -->
+    <section id="view-events" class="view-section">
+        <div id="eventsContainer"></div>
+    </section>
+
+    <!-- 5. SETTINGS VIEW (Screenshot 5) -->
+    <section id="view-settings" class="view-section">
+        <div class="settings-group">
+            <div class="settings-group-label" data-i18n="settings">SETTINGS</div>
+            <div class="settings-row" id="settingLangRow">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="language">Language</span>
+                </div>
+                <div class="settings-val"><span id="currentLangLabel">English</span> &rsaquo;</div>
+            </div>
+            <div class="settings-row" id="settingCurrRow">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="currency">Currency</span>
+                </div>
+                <div class="settings-val"><span id="currentCurrLabel">ETB</span> &rsaquo;</div>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="settings-group-label" data-i18n="preferences">PREFERENCES</div>
+            <div class="settings-row">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="ethiopianCalendar">Use Ethiopian Calendar</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="ethCalToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="settings-group-label" data-i18n="dataManagement">DATA MANAGEMENT</div>
+            <div class="settings-row" id="backupCsvRow">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="backupCsv">Backup Data (.csv)</span>
+                </div>
+                <div class="settings-val">&rsaquo;</div>
+            </div>
+            <div class="settings-row" id="restoreCsvRow">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="restoreCsv">Restore Data (.csv)</span>
+                </div>
+                <div class="settings-val">&rsaquo;</div>
+            </div>
+            <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+        </div>
+
+        <div class="settings-group">
+            <div class="settings-group-label" data-i18n="security">SECURITY</div>
+            <div class="settings-row">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="fingerprintLock">Enable Fingerprint Lock</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="biometricToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-row" id="setupPinRow">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="setupPin">Set up PIN Lock</span>
+                </div>
+                <div class="settings-val"><span id="pinStatusLabel">Off</span> &rsaquo;</div>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <div class="settings-group-label" data-i18n="supportAbout">SUPPORT & ABOUT</div>
+            <div class="settings-row" onclick="showToast('Tap + to add records, switch tabs to view Reports & Budget.')">
+                <div class="settings-left">
+                    <div class="settings-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                    <span class="settings-name" data-i18n="helpFaq">Help & FAQ</span>
+                </div>
+                <div class="settings-val">&rsaquo;</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FLOATING ACTION BUTTON -->
+    <button class="fab" id="mainFab" aria-label="Add">+</button>
+
+    <!-- BOTTOM NAVIGATION BAR (5 TABS) -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-tab="records">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span data-i18n="navRecords">Records</span>
+        </button>
+        <button class="nav-item" data-tab="report">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span data-i18n="navReport">Report</span>
+        </button>
+        <button class="nav-item" data-tab="budget">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+            <span data-i18n="navBudget">Budget</span>
+        </button>
+        <button class="nav-item" data-tab="events">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span data-i18n="navEvents">Events</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span data-i18n="navSettings">Settings</span>
+        </button>
+    </nav>
+
+    <!-- ADD RECORD MODAL -->
+    <div class="modal-overlay" id="recordModal">
+        <div class="modal-sheet">
+            <div class="modal-head">
+                <h3 data-i18n="addRecordTitle">Add Record</h3>
+                <button class="close-modal" id="closeRecordModal">&times;</button>
+            </div>
+            <form id="recordForm">
+                <div class="form-field">
+                    <label data-i18n="typeLabel">Type</label>
+                    <select id="recType">
+                        <option value="income">Income (+)</option>
+                        <option value="expense">Expense (-)</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label data-i18n="categoryLabel">Category</label>
+                    <select id="recCategory">
+                        <option value="Business Profit">Business Profit</option>
+                        <option value="Food & Drinks">Food & Drinks</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label data-i18n="noteLabel">Note / Description</label>
+                    <input type="text" id="recNote" required placeholder="e.g., Copy, Scan, CBE, Lemeleket...">
+                </div>
+                <div class="form-field">
+                    <label data-i18n="amountLabel">Amount</label>
+                    <input type="number" id="recAmount" step="0.01" min="0.01" required placeholder="0.00">
+                </div>
+                <button type="submit" class="submit-btn" data-i18n="saveRecordBtn">Save Record</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD EVENT MODAL -->
+    <div class="modal-overlay" id="eventModal">
+        <div class="modal-sheet">
+            <div class="modal-head">
+                <h3 data-i18n="createEventTitle">Create Event</h3>
+                <button class="close-modal" id="closeEventModal">&times;</button>
+            </div>
+            <form id="eventForm">
+                <div class="form-field">
+                    <label>Event Title</label>
+                    <input type="text" id="evtTitle" required placeholder="e.g., Monthly Shop Rent, Tax Payment...">
+                </div>
+                <div class="form-field">
+                    <label>Target Budget / Amount</label>
+                    <input type="number" id="evtAmount" step="0.01" min="0" required placeholder="0.00">
+                </div>
+                <div class="form-field">
+                    <label>Date</label>
+                    <input type="date" id="evtDate" required>
+                </div>
+                <button type="submit" class="submit-btn">Save Event</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PIN LOCK OVERLAY -->
+    <div class="pin-overlay" id="pinOverlay">
+        <h2>Galmee Herregaa</h2>
+        <p style="color:#94a3b8; margin-top:6px;">Enter your 4-digit PIN to unlock</p>
+        <input type="password" id="pinUnlockInput" class="pin-input" maxlength="4" inputmode="numeric" placeholder="••••">
+        <button class="submit-btn" style="width:180px;" id="pinUnlockBtn">Unlock</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Storage Keys
+        const STORAGE_KEY = 'galmee_records_v3';
+        const EVENTS_KEY = 'galmee_events_v3';
+        const SETTINGS_KEY = 'galmee_settings_v3';
+
+        // Default Pre-populated Records matching your screenshots (Total Balance 606.00 ETB: Income 4,296.00 ETB, Expense 3,690.00 ETB)
+        const DEFAULT_RECORDS = [
+            { id: 101, type: 'income', category: 'Business Profit', note: 'Until 3', amount: 1100.00, ethDate: 'ጥቅምት 26, 2019', isoDate: '2026-11-26' },
+            { id: 102, type: 'expense', category: 'Others', note: 'Etrade payment', amount: 390.00, ethDate: 'ጥቅምት 26, 2019', isoDate: '2026-11-26' },
+            { id: 103, type: 'expense', category: 'Food & Drinks', note: 'CBE', amount: 300.00, ethDate: 'ጥቅምት 26, 2019', isoDate: '2026-11-26' },
+            { id: 104, type: 'expense', category: 'Transport', note: 'Lemeleket', amount: 200.00, ethDate: 'ጥቅምት 26, 2019', isoDate: '2026-11-26' },
+            { id: 105, type: 'income', category: 'Business Profit', note: 'Copy', amount: 250.00, ethDate: 'ጥቅምት 26, 2019', isoDate: '2026-11-26' },
+            { id: 106, type: 'income', category: 'Business Profit', note: 'Scan', amount: 240.00, ethDate: 'ጥቅምት 26, 2019', isoDate: '2026-11-26' },
+            { id: 107, type: 'expense', category: 'Transport', note: 'Bajaj', amount: 75.00, ethDate: 'ጥቅምት 26, 2019', isoDate: '2026-11-26' },
+            { id: 108, type: 'expense', category: 'Food & Drinks', note: 'Lunch', amount: 220.00, ethDate: 'ጥቅምት 25, 2019', isoDate: '2026-11-25' },
+            { id: 109, type: 'expense', category: 'Others', note: 'Airtime & Data', amount: 200.00, ethDate: 'ጥቅምት 25, 2019', isoDate: '2026-11-25' },
+            { id: 110, type: 'expense', category: 'Transport', note: 'Taxi', amount: 85.00, ethDate: 'ጥቅምት 25, 2019', isoDate: '2026-11-25' },
+            { id: 111, type: 'expense', category: 'Others', note: 'Paper & Toner', amount: 2000.00, ethDate: 'ጥቅምት 24, 2019', isoDate: '2026-11-24' },
+            { id: 112, type: 'expense', category: 'Food & Drinks', note: 'Coffee & Snacks', amount: 220.00, ethDate: 'ጥቅምት 24, 2019', isoDate: '2026-11-24' },
+            { id: 113, type: 'income', category: 'Business Profit', note: 'Printing & Binding', amount: 2706.00, ethDate: 'ጥቅምት 24, 2019', isoDate: '2026-11-24' }
+        ];
+
+        // Translations (English, Afaan Oromoo, Amharic)
+        const I18N = {
+            en: {
+                appName: 'Galmee Herregaa',
+                appTagline: 'Track with confidence',
+                navRecords: 'Records',
+                navReport: 'Report',
+                navBudget: 'Budget',
+                navEvents: 'Events',
+                navSettings: 'Settings',
+                totalBalance: 'Total Balance',
+                income: 'Income',
+                expense: 'Expense',
+                expenses: 'Expenses',
+                recentRecords: 'Recent Records',
+                weekly: 'Weekly',
+                monthly: 'Monthly',
+                yearly: 'Yearly',
+                totalSpent: 'Total Spent',
+                dailyAvg: 'Daily',
+                spendingByCategory: 'Spending by Category',
+                expenseDistribution: 'Expense Distribution',
+                noEvents: 'No events found. Create',
+                settings: 'SETTINGS',
+                language: 'Language',
+                currency: 'Currency',
+                preferences: 'PREFERENCES',
+                ethiopianCalendar: 'Use Ethiopian Calendar',
+                dataManagement: 'DATA MANAGEMENT',
+                backupCsv: 'Backup Data (.csv)',
+                restoreCsv: 'Restore Data (.csv)',
+                security: 'SECURITY',
+                fingerprintLock: 'Enable Fingerprint Lock',
+                setupPin: 'Set up PIN Lock',
+                supportAbout: 'SUPPORT & ABOUT',
+                helpFaq: 'Help & FAQ',
+                actions: 'ACTIONS',
+                exportRecord: 'Export Record',
+                nightMode: 'Night Mode',
+                supportLegal: 'SUPPORT & LEGAL',
+                rateUs: 'Rate Us',
+                privacyPolicy: 'Privacy Policy'
+            },
+            om: {
+                appName: 'Galmee Herregaa',
+                appTagline: 'To’annoo Galii fi Baasii',
+                navRecords: 'Galmee',
+                navReport: 'Gabaasa',
+                navBudget: 'Baajata',
+                navEvents: 'Taateewwan',
+                navSettings: 'Qindaa’ina',
+                totalBalance: 'Haftee Waliigalaa',
+                income: 'Galii',
+                expense: 'Baasii',
+                expenses: 'Baasiiwwan',
+                recentRecords: 'Galmeewwan Dhihoo',
+                weekly: 'Torbanii',
+                monthly: 'Ji’aa',
+                yearly: 'Waggaa',
+                totalSpent: 'Baasii Waliigalaa',
+                dailyAvg: 'Guyyaatti',
+                spendingByCategory: 'Baasii Akkaataa Ramaddiitiin',
+                expenseDistribution: 'Raabsa Baasii',
+                noEvents: 'Taateen hin argamne. Uumi',
+                settings: 'QINDAA’INA',
+                language: 'Afaan',
+                currency: 'Maallaqa',
+                preferences: 'FILANNOOWWAN',
+                ethiopianCalendar: 'Kaalaandarii Itoophiyaa Fayyadami',
+                dataManagement: 'BULCHIINSA DAATAA',
+                backupCsv: 'Daataa Olkaa’i (.csv)',
+                restoreCsv: 'Daataa Deebisi (.csv)',
+                security: 'NAGEENYA',
+                fingerprintLock: 'Cufaa Qubaatiin Bani',
+                setupPin: 'Koodii PIN Qindeessi',
+                supportAbout: 'DEEGGARSA FI WAA’EE',
+                helpFaq: 'Gargaarsa fi Gaaffiiwwan',
+                actions: 'GOCHAWWAN',
+                exportRecord: 'Galmee Baasi',
+                nightMode: 'Haala Halkanii',
+                supportLegal: 'DEEGGARSA FI SEERA',
+                rateUs: 'Nu Madaali',
+                privacyPolicy: 'Imaammata Mateenyaa'
+            },
+            am: {
+                appName: 'Galmee Herregaa',
+                appTagline: 'የገቢና ወጪ መመዝገቢያ',
+                navRecords: 'መዝገብ',
+                navReport: 'ሪፖርት',
+                navBudget: 'በጀት',
+                navEvents: 'ሁነቶች',
+                navSettings: 'ቅንብሮች',
+                totalBalance: 'ጠቅላላ ቀሪ ሂሳብ',
+                income: 'ገቢ',
+                expense: 'ወጪ',
+                expenses: 'ወጪዎች',
+                recentRecords: 'የቅርብ ጊዜ መዝገቦች',
+                weekly: 'ሳምንታዊ',
+                monthly: 'ወርሃዊ',
+                yearly: 'ዓመታዊ',
+                totalSpent: 'ጠቅላላ ወጪ',
+                dailyAvg: 'በቀን',
+                spendingByCategory: 'ወጪ በምድብ',
+                expenseDistribution: 'የወጪ ክፍፍል',
+                noEvents: 'ምንም ሁነት አልተገኘም። ይፍጠሩ',
+                settings: 'ቅንብሮች',
+                language: 'ቋንቋ',
+                currency: 'ምንዛሬ',
+                preferences: 'ምርጫዎች',
+                ethiopianCalendar: 'የኢትዮጵያ ቀን መቁጠሪያ ተጠቀም',
+                dataManagement: 'የመረጃ አስተዳደር',
+                backupCsv: 'መረጃ አስቀምጥ (.csv)',
+                restoreCsv: 'መረጃ መልስ (.csv)',
+                security: 'ደህንነት',
+                fingerprintLock: 'የጣት አሻራ መቆለፊያ',
+                setupPin: 'የPIN መቆለፊያ አዘጋጅ',
+                supportAbout: 'ድጋፍ እና ስለ መተግበሪያው',
+                helpFaq: 'እገዛ እና ጥያቄዎች',
+                actions: 'ተግባራት',
+                exportRecord: 'መዝገብ ላክ',
+                nightMode: 'የማታ ገጽታ',
+                supportLegal: 'ድጋፍ እና ህጋዊ',
+                rateUs: 'ደረጃ ይስጡን',
+                privacyPolicy: 'የግላዊነት ፖሊሲ'
+            }
+        };
+
+        // App State
+        let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_RECORDS;
+        let events = JSON.parse(localStorage.getItem(EVENTS_KEY)) || [];
+        let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
+            lang: 'en',
+            currency: 'ETB',
+            ethCal: true,
+            nightMode: false,
+            biometric: false,
+            pin: ''
+        };
+
+        let activeTab = 'records';
+        let budgetSubTab = 'expense';
+        let reportPeriod = 'monthly';
+        let hideBalances = false;
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+            localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2600);
+        }
+
+        function formatMoney(val) {
+            if (hideBalances) return '••••••';
+            return Number(val).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' ' + settings.currency;
+        }
+
+        function getCategoryIcon(cat) {
+            if (cat === 'Business Profit') {
+                return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+            }
+            if (cat === 'Food & Drinks') {
+                return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
+            }
+            if (cat === 'Transport') {
+                return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="3"/><line x1="3" y1="11" x2="21" y2="11"/><circle cx="7.5" cy="15.5" r="1.5"/><circle cx="16.5" cy="15.5" r="1.5"/></svg>`;
+            }
+            return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>`;
+        }
+
+        function applyTranslations() {
+            const dict = I18N[settings.lang] || I18N.en;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) el.textContent = dict[key];
+            });
+            const langNames = { en: 'English', om: 'Afaan Oromoo', am: 'አማርኛ' };
+            document.getElementById('currentLangLabel').textContent = langNames[settings.lang] || 'English';
+            document.getElementById('currentCurrLabel').textContent = settings.currency;
+            updateHeader();
+        }
+
+        function updateHeader() {
+            const dict = I18N[settings.lang] || I18N.en;
+            const titleMap = {
+                records: dict.navRecords,
+                report: dict.navReport,
+                budget: dict.navBudget,
+                events: dict.navEvents,
+                settings: dict.navSettings
+            };
+            document.getElementById('headerTitle').textContent = titleMap[activeTab] || 'Records';
+
+            const leftBtn = document.getElementById('leftHeaderBtn');
+            const rightBtn = document.getElementById('rightHeaderBtn');
+
+            if (activeTab === 'records') {
+                leftBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
+                rightBtn.style.visibility = 'hidden';
+            } else {
+                leftBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`;
+                rightBtn.style.visibility = activeTab === 'budget' ? 'visible' : 'hidden';
+            }
+
+            // Show FAB on Records, Budget, and Events views
+            const fab = document.getElementById('mainFab');
+            fab.style.display = (activeTab === 'records' || activeTab === 'budget' || activeTab === 'events') ? 'flex' : 'none';
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('view-' + tab).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => {
+                n.classList.toggle('active', n.dataset.tab === tab);
+            });
+            updateHeader();
+            renderAll();
+        }
+
+        // Render Records, Budget, Reports & Events
+        function renderAll() {
+            const totalIncome = records.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0);
+            const totalExpense = records.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+            const netBalance = totalIncome - totalExpense;
+
+            document.getElementById('heroBalance').textContent = formatMoney(netBalance);
+            document.getElementById('heroIncome').textContent = formatMoney(totalIncome);
+            document.getElementById('heroExpense').textContent = formatMoney(totalExpense);
+
+            // Recent Records List (Screenshot 1)
+            const recentList = document.getElementById('recentRecordsList');
+            recentList.innerHTML = '';
+            records.forEach(rec => {
+                const isInc = rec.type === 'income';
+                const card = document.createElement('div');
+                card.className = 'record-card';
+                card.innerHTML = `
+                    <div class="record-left">
+                        <div class="cat-icon-box">${getCategoryIcon(rec.category)}</div>
+                        <div class="record-info">
+                            <div class="record-title">${escapeHtml(rec.category)}</div>
+                            <div class="record-sub">${escapeHtml(rec.note)}</div>
+                        </div>
+                    </div>
+                    <div class="record-right">
+                        <span class="${isInc ? 'amount-pos' : 'amount-neg'}">${isInc ? '+ ' : '- '}${formatMoney(rec.amount)}</span>
+                    </div>
+                `;
+                recentList.appendChild(card);
+            });
+
+            // Budget View List with Date & Trash Button (Screenshot 3)
+            const budgetList = document.getElementById('budgetRecordsList');
+            budgetList.innerHTML = '';
+            const filteredBudget = records.filter(r => r.type === budgetSubTab);
+            filteredBudget.forEach(rec => {
+                const isInc = rec.type === 'income';
+                const dateDisplay = settings.ethCal ? (rec.ethDate || rec.isoDate) : rec.isoDate;
+                const card = document.createElement('div');
+                card.className = 'record-card';
+                card.innerHTML = `
+                    <div class="record-left">
+                        <div class="cat-icon-box">${getCategoryIcon(rec.category)}</div>
+                        <div class="record-info">
+                            <div class="record-title">${escapeHtml(rec.category)}</div>
+                            <div class="record-sub">${escapeHtml(dateDisplay)} • ${escapeHtml(rec.note)}</div>
+                        </div>
+                    </div>
+                    <div class="record-right">
+                        <span class="${isInc ? 'amount-pos' : 'amount-neg'}">${isInc ? '+ ' : '- '}${Number(rec.amount).toLocaleString('en-US')} ${settings.currency}</span>
+                        <button class="trash-btn" onclick="deleteRecord(${rec.id})" aria-label="Delete">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                `;
+                budgetList.appendChild(card);
+            });
+
+            renderReports();
+            renderEvents();
+        }
+
+        function renderReports() {
+            const mult = reportPeriod === 'weekly' ? 0.25 : (reportPeriod === 'yearly' ? 12 : 1);
+            const days = reportPeriod === 'weekly' ? 7 : (reportPeriod === 'yearly' ? 365 : 26);
+
+            const expenses = records.filter(r => r.type === 'expense');
+            const totalSpent = expenses.reduce((s, r) => s + r.amount, 0) * mult;
+            const dailyAvg = totalSpent / days;
+
+            document.getElementById('reportTotalSpent').textContent = formatMoney(totalSpent);
+            document.getElementById('reportDailyAvg').textContent = formatMoney(dailyAvg);
+
+            // Group by category
+            const cats = ['Others', 'Food & Drinks', 'Transport'];
+            const totals = cats.map(c =>
+                Math.round(expenses.filter(r => r.category === c).reduce((s, r) => s + r.amount, 0) * mult)
+            );
+
+            // Draw Bar Chart (Screenshot 2)
+            const barCanvas = document.getElementById('barChartCanvas');
+            const ctx = barCanvas.getContext('2d');
+            const w = barCanvas.width;
+            const h = barCanvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const maxVal = Math.max(...totals, 100);
+            const padLeft = 72, padBottom = 38, padTop = 16, padRight = 20;
+            const plotW = w - padLeft - padRight;
+            const plotH = h - padTop - padBottom;
+
+            ctx.font = '11px sans-serif';
+            ctx.fillStyle = '#6b7280';
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.setLineDash([4, 4]);
+
+            for (let i = 0; i <= 4; i++) {
+                const val = Math.round((maxVal / 4) * i);
+                const y = padTop + plotH - (plotH * (i / 4));
+                ctx.fillText(`${settings.currency} ${val}`, 6, y + 4);
+                ctx.beginPath();
+                ctx.moveTo(padLeft, y);
+                ctx.lineTo(w - padRight, y);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            const colW = plotW / cats.length;
+            cats.forEach((cat, idx) => {
+                const barH = (totals[idx] / maxVal) * plotH;
+                const bx = padLeft + idx * colW + (colW - 34) / 2;
+                const by = padTop + plotH - barH;
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(bx, by, 34, barH);
+                ctx.fillStyle = '#183e8a';
+                ctx.fillRect(bx, by, 34, 3);
+
+                ctx.fillStyle = '#4b5563';
+                ctx.fillText(cat.length > 10 ? cat.slice(0, 9) + '..' : cat, bx - 4, h - 14);
+            });
+
+            // Draw Pie Chart (Screenshot 2)
+            const pieCanvas = document.getElementById('pieChartCanvas');
+            const pctx = pieCanvas.getContext('2d');
+            pctx.clearRect(0, 0, 170, 170);
+            const colors = ['#93c5fd', '#a7f3d0', '#fed7aa'];
+            const sum = totals.reduce((a, b) => a + b, 0) || 1;
+            let startAngle = -Math.PI / 2;
+
+            totals.forEach((val, idx) => {
+                const slice = (val / sum) * Math.PI * 2;
+                pctx.beginPath();
+                pctx.moveTo(85, 85);
+                pctx.arc(85, 85, 76, startAngle, startAngle + slice);
+                pctx.closePath();
+                pctx.fillStyle = colors[idx];
+                pctx.fill();
+                startAngle += slice;
+            });
+
+            const legend = document.getElementById('pieLegend');
+            legend.innerHTML = '';
+            cats.forEach((cat, idx) => {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.innerHTML = `<span class="legend-dot" style="background:${colors[idx]};"></span><span>${totals[idx]} ${cat}</span>`;
+                legend.appendChild(item);
+            });
+        }
+
+        function renderEvents() {
+            const container = document.getElementById('eventsContainer');
+            const dict = I18N[settings.lang] || I18N.en;
+            if (events.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-center">
+                        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="10" y1="14" x2="14" y2="18"/><line x1="14" y1="14" x2="10" y2="18"/></svg>
+                        <p>${dict.noEvents}</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '<div class="record-list">' + events.map(ev => `
+                    <div class="record-card">
+                        <div class="record-left">
+                            <div class="cat-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+                            </div>
+                            <div class="record-info">
+                                <div class="record-title">${escapeHtml(ev.title)}</div>
+                                <div class="record-sub">${escapeHtml(ev.date)}</div>
+                            </div>
+                        </div>
+                        <div class="record-right">
+                            <span class="amount-pos">${formatMoney(ev.amount)}</span>
+                            <button class="trash-btn" onclick="deleteEvent(${ev.id})">&times;</button>
+                        </div>
+                    </div>
+                `).join('') + '</div>';
+            }
+        }
+
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            saveState();
+            renderAll();
+            showToast('Record deleted');
+        }
+
+        function deleteEvent(id) {
+            events = events.filter(e => e.id !== id);
+            saveState();
+            renderEvents();
+            showToast('Event removed');
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // Event Listeners
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        function openDrawer() {
+            document.getElementById('sideDrawer').classList.add('open');
+            document.getElementById('drawerBackdrop').classList.add('open');
+        }
+
+        function closeDrawer() {
+            document.getElementById('sideDrawer').classList.remove('open');
+            document.getElementById('drawerBackdrop').classList.remove('open');
+        }
+
+        document.getElementById('leftHeaderBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (activeTab === 'records') {
+                openDrawer();
+            } else {
+                switchTab('records');
+            }
+        });
+
+        document.getElementById('drawerBackdrop').addEventListener('click', closeDrawer);
+
+        // Touch swipe support for drawer (swipe right from left edge to open, swipe left to close)
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const diffX = e.changedTouches[0].clientX - touchStartX;
+            if (activeTab === 'records' && touchStartX < 36 && diffX > 65) {
+                openDrawer();
+            } else if (document.getElementById('sideDrawer').classList.contains('open') && diffX < -65) {
+                closeDrawer();
+            }
+        }, { passive: true });
+
+        document.getElementById('toggleBalanceVis').addEventListener('click', () => {
+            hideBalances = !hideBalances;
+            renderAll();
+        });
+
+        // Budget Sub-tabs
+        document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                budgetSubTab = btn.dataset.budgetTab;
+                renderAll();
+            });
+        });
+
+        // Report Period Toggle
+        document.querySelectorAll('.seg-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                reportPeriod = btn.dataset.period;
+                renderReports();
+            });
+        });
+
+        // FAB opens Record Modal or Event Modal
+        document.getElementById('mainFab').addEventListener('click', () => {
+            if (activeTab === 'events') {
+                document.getElementById('eventModal').classList.add('open');
+            } else {
+                if (activeTab === 'budget') {
+                    document.getElementById('recType').value = budgetSubTab;
+                }
+                document.getElementById('recordModal').classList.add('open');
+            }
+        });
+
+        document.getElementById('closeRecordModal').addEventListener('click', () => {
+            document.getElementById('recordModal').classList.remove('open');
+        });
+
+        document.getElementById('closeEventModal').addEventListener('click', () => {
+            document.getElementById('eventModal').classList.remove('open');
+        });
+
+        document.getElementById('recordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const type = document.getElementById('recType').value;
+            const category = document.getElementById('recCategory').value;
+            const note = document.getElementById('recNote').value.trim();
+            const amount = parseFloat(document.getElementById('recAmount').value);
+            if (!note || isNaN(amount) || amount <= 0) return;
+
+            records.unshift({
+                id: Date.now(),
+                type,
+                category,
+                note,
+                amount,
+                ethDate: 'ጥቅምት 26, 2019',
+                isoDate: new Date().toISOString().slice(0, 10)
+            });
+            saveState();
+            renderAll();
+            e.target.reset();
+            document.getElementById('recordModal').classList.remove('open');
+            showToast('Record saved');
+        });
+
+        document.getElementById('eventForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const title = document.getElementById('evtTitle').value.trim();
+            const amount = parseFloat(document.getElementById('evtAmount').value) || 0;
+            const date = document.getElementById('evtDate').value;
+            events.unshift({ id: Date.now(), title, amount, date });
+            saveState();
+            renderEvents();
+            e.target.reset();
+            document.getElementById('eventModal').classList.remove('open');
+            showToast('Event created');
+        });
+
+        // Settings Controls
+        document.getElementById('settingLangRow').addEventListener('click', () => {
+            const order = ['en', 'om', 'am'];
+            settings.lang = order[(order.indexOf(settings.lang) + 1) % order.length];
+            saveState();
+            applyTranslations();
+            showToast('Language updated');
+        });
+
+        document.getElementById('settingCurrRow').addEventListener('click', () => {
+            const order = ['ETB', 'USD', 'EUR'];
+            settings.currency = order[(order.indexOf(settings.currency) + 1) % order.length];
+            saveState();
+            applyTranslations();
+            renderAll();
+            showToast('Currency: ' + settings.currency);
+        });
+
+        const ethToggle = document.getElementById('ethCalToggle');
+        ethToggle.checked = settings.ethCal;
+        ethToggle.addEventListener('change', () => {
+            settings.ethCal = ethToggle.checked;
+            saveState();
+            renderAll();
+        });
+
+        const nightToggle = document.getElementById('nightModeToggle');
+        nightToggle.checked = settings.nightMode;
+        if (settings.nightMode) document.body.classList.add('night-mode');
+        nightToggle.addEventListener('change', () => {
+            settings.nightMode = nightToggle.checked;
+            document.body.classList.toggle('night-mode', settings.nightMode);
+            saveState();
+        });
+
+        // CSV Export & Restore
+        function exportCsv() {
+            const rows = [['ID', 'Type', 'Category', 'Note', 'Amount', 'EthiopianDate', 'ISODate']];
+            records.forEach(r => {
+                rows.push([r.id, r.type, `"${r.category}"`, `"${r.note.replace(/"/g, '""')}"`, r.amount, `"${r.ethDate}"`, r.isoDate]);
+            });
+            const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `galmee-herregaa-backup-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('CSV Backup downloaded');
+        }
+
+        document.getElementById('backupCsvRow').addEventListener('click', exportCsv);
+        document.getElementById('drawerExportBtn').addEventListener('click', () => { closeDrawer(); exportCsv(); });
+
+        document.getElementById('restoreCsvRow').addEventListener('click', () => {
+            document.getElementById('csvFileInput').click();
+        });
+
+        document.getElementById('csvFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const lines = evt.target.result.split(/\r?\n/).slice(1).filter(Boolean);
+                const imported = [];
+                lines.forEach((line, i) => {
+                    const parts = line.split(',');
+                    if (parts.length >= 5) {
+                        imported.push({
+                            id: Date.now() + i,
+                            type: parts[1].trim() === 'income' ? 'income' : 'expense',
+                            category: parts[2].replace(/^"|"$/g, ''),
+                            note: parts[3].replace(/^"|"$/g, ''),
+                            amount: parseFloat(parts[4]) || 0,
+                            ethDate: (parts[5] || 'ጥቅምት 26, 2019').replace(/^"|"$/g, ''),
+                            isoDate: (parts[6] || new Date().toISOString().slice(0, 10)).trim()
+                        });
+                    }
+                });
+                if (imported.length > 0) {
+                    records = imported;
+                    saveState();
+                    renderAll();
+                    showToast(`Restored ${imported.length} records`);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Security PIN & Biometric
+        const bioToggle = document.getElementById('biometricToggle');
+        bioToggle.checked = settings.biometric;
+        bioToggle.addEventListener('change', () => {
+            settings.biometric = bioToggle.checked;
+            saveState();
+            showToast(settings.biometric ? 'Fingerprint lock enabled' : 'Fingerprint lock disabled');
+        });
+
+        document.getElementById('pinStatusLabel').textContent = settings.pin ? 'Active' : 'Off';
+        document.getElementById('setupPinRow').addEventListener('click', () => {
+            const newPin = prompt('Enter a 4-digit PIN (leave blank to disable):');
+            if (newPin === null) return;
+            if (/^\d{4}$/.test(newPin.trim())) {
+                settings.pin = newPin.trim();
+                document.getElementById('pinStatusLabel').textContent = 'Active';
+                showToast('PIN Lock saved');
+            } else {
+                settings.pin = '';
+                document.getElementById('pinStatusLabel').textContent = 'Off';
+                showToast('PIN Lock disabled');
+            }
+            saveState();
+        });
+
+        if (settings.pin) {
+            document.getElementById('pinOverlay').classList.add('open');
+        }
+
+        document.getElementById('pinUnlockBtn').addEventListener('click', () => {
+            if (document.getElementById('pinUnlockInput').value === settings.pin) {
+                document.getElementById('pinOverlay').classList.remove('open');
+            } else {
+                showToast('Incorrect PIN');
+            }
+        });
+
+        // Init
+        applyTranslations();
+        renderAll();
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>
