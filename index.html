@@ -1637,22 +1637,30 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v26';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v31';
         const DEFAULT_CLOUD_CFG = {
             url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
             table: 'galmee_user_data'
         };
 
+        function normalizeSupabaseKey(rawKey) {
+            const k = (rawKey || '').trim();
+            if (k.startsWith('Sb_publishable_')) {
+                return 'sb_publishable_' + k.slice('Sb_publishable_'.length);
+            }
+            return k;
+        }
+
         function loadCloudConfig() {
             try {
                 const stored = JSON.parse(localStorage.getItem(CLOUD_CFG_STORAGE_KEY)) || {};
-                let cfgUrl = (stored.url || DEFAULT_CLOUD_CFG.url || '').trim();
-                let cfgKey = (stored.anonKey || DEFAULT_CLOUD_CFG.anonKey || '').trim();
-                if (cfgUrl === 'https://uyygiyblgmkmluqszfen.supabase.co') {
+                let cfgUrl = (stored.url || DEFAULT_CLOUD_CFG.url || '').trim().toLowerCase();
+                let cfgKey = normalizeSupabaseKey(stored.anonKey || DEFAULT_CLOUD_CFG.anonKey);
+                if (!cfgUrl) {
                     cfgUrl = DEFAULT_CLOUD_CFG.url;
                 }
-                if (cfgKey === 'Sbp_fc2ac65074b4af5fab901595d7b52b8a150dbf2d' || cfgKey === 'Sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv') {
+                if (!cfgKey || cfgKey.startsWith('Sbp_') || cfgKey.startsWith('sbp_')) {
                     cfgKey = DEFAULT_CLOUD_CFG.anonKey;
                 }
                 return {
