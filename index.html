@@ -169,7 +169,7 @@
             border: 1px solid var(--border);
             background: var(--bg);
             color: var(--text);
-            font-size: 0.95rem;
+            font-size: 16px;
             outline: none;
         }
 
@@ -1089,7 +1089,7 @@
                 </div>
                 <div class="form-field">
                     <label for="authEmail">Email Address</label>
-                    <input type="email" id="authEmail" required placeholder="you@gmail.com">
+                    <input type="email" id="authEmail" required placeholder="you@gmail.com" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false">
                 </div>
                 <div class="form-field">
                     <label for="authPassword">Password</label>
@@ -1118,7 +1118,7 @@
             <form id="forgotEmailForm">
                 <div class="form-field">
                     <label for="forgotEmailInput">Email Address</label>
-                    <input type="email" id="forgotEmailInput" required placeholder="you@gmail.com">
+                    <input type="email" id="forgotEmailInput" required placeholder="you@gmail.com" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false">
                 </div>
                 <button type="submit" class="submit-btn" id="sendResetOtpBtn">
                     <span>Send OTP to Email</span>
@@ -1629,9 +1629,9 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v32';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v33';
         const DEFAULT_CLOUD_CFG = {
-            url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
+            url: 'https://uyygiyblgmkmluqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
             table: 'galmee_user_data'
         };
@@ -1986,41 +1986,51 @@
 
             if (!isSignupMode) {
                 // LOGIN FLOW: Direct login without OTP prompt; checks cloud first for cross-device password & records
-                let existingUser = usersDb[email];
-                if (!existingUser && isCloudSyncEnabled()) {
-                    try {
-                        const cloudRow = await fetchCloudUserRow(email);
-                        if (cloudRow && cloudRow.user_profile) {
-                            existingUser = cloudRow.user_profile;
-                            usersDb[email] = existingUser;
-                            localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
-                        }
-                    } catch (_) {}
-                }
+                const loginBtn = document.getElementById('authSubmitBtn');
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<span>Signing in...</span>';
+                try {
+                    let existingUser = usersDb[email];
+                    if (!existingUser && isCloudSyncEnabled()) {
+                        try {
+                            const cloudRow = await fetchCloudUserRow(email);
+                            if (cloudRow && cloudRow.user_profile) {
+                                existingUser = cloudRow.user_profile;
+                                usersDb[email] = existingUser;
+                                try { localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb)); } catch (_) {}
+                            }
+                        } catch (_) {}
+                    }
 
-                if (existingUser) {
-                    if (existingUser.password && existingUser.password !== password) {
-                        showToast('Invalid email or password.');
+                    if (existingUser) {
+                        if (existingUser.password && existingUser.password !== password) {
+                            showToast('Invalid email or password.');
+                            return;
+                        }
+                        currentUserEmail = email;
+                        try { localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail); } catch (_) {}
+                        await loadUserWorkspace(currentUserEmail);
+                        showToast('Signed in successfully!');
                         return;
                     }
-                    currentUserEmail = email;
-                    localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail);
-                    await loadUserWorkspace(currentUserEmail);
-                    showToast('Signed in successfully!');
-                    return;
-                }
 
-                usersDb[email] = {
-                    name: email.split('@')[0],
-                    password: password,
-                    verified: true,
-                    createdAt: new Date().toISOString()
-                };
-                localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
-                currentUserEmail = email;
-                localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail);
-                await loadUserWorkspace(currentUserEmail);
-                showToast('Signed in to your account!');
+                    usersDb[email] = {
+                        name: email.split('@')[0],
+                        password: password,
+                        verified: true,
+                        createdAt: new Date().toISOString()
+                    };
+                    try { localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb)); } catch (_) {}
+                    currentUserEmail = email;
+                    try { localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail); } catch (_) {}
+                    await loadUserWorkspace(currentUserEmail);
+                    showToast('Signed in to your account!');
+                } catch (loginErr) {
+                    showToast('Sign in error: ' + (loginErr && loginErr.message ? loginErr.message : 'Try again'));
+                } finally {
+                    loginBtn.disabled = false;
+                    updateAuthButtonLabel();
+                }
                 return;
             }
 
@@ -2764,7 +2774,6 @@
             e.stopPropagation();
             if (activeTab === 'records') openDrawer();
             else switchTab('records');
-        });
         });
 
         document.getElementById('drawerBackdrop').addEventListener('click', closeDrawer);
