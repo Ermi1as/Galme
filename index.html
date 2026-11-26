@@ -1493,12 +1493,36 @@
                     </select>
                 </div>
                 <div class="form-field">
+                    <label>Account</label>
+                    <select id="recAccount">
+                        <option value="Cash">Cash</option>
+                        <option value="Abay Bank">Abay Bank</option>
+                        <option value="Abyssinia">Abyssinia</option>
+                        <option value="Addis Bank">Addis Bank</option>
+                        <option value="Ahadu Bank">Ahadu Bank</option>
+                        <option value="Amhara Bank">Amhara Bank</option>
+                        <option value="Awash Bank">Awash Bank</option>
+                        <option value="Birhan Bank">Birhan Bank</option>
+                        <option value="Buna Bank">Buna Bank</option>
+                        <option value="CBE">CBE</option>
+                        <option value="Coop Bank">Coop Bank</option>
+                        <option value="Dashen Bank">Dashen Bank</option>
+                        <option value="Enat Bank">Enat Bank</option>
+                        <option value="Gaada Bank">Gaada Bank</option>
+                        <option value="Global Bank">Global Bank</option>
+                    </select>
+                </div>
+                <div class="form-field">
                     <label>Category</label>
                     <select id="recCategory">
+                        <option value="Salary">Salary</option>
+                        <option value="Freelance / Side Job">Freelance / Side Job</option>
                         <option value="Business Profit">Business Profit</option>
-                        <option value="Food & Drinks">Food & Drinks</option>
-                        <option value="Transport">Transport</option>
-                        <option value="Others">Others</option>
+                        <option value="Gift / Family Support">Gift / Family Support</option>
+                        <option value="Rental Income">Rental Income</option>
+                        <option value="Investment">Investment</option>
+                        <option value="Loan">Loan</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div class="form-field">
@@ -1630,9 +1654,9 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v38';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v40';
         const DEFAULT_CLOUD_CFG = {
-            url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
+            url: 'https://uyygiyblgmkmluqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
             table: 'galmee_user_data'
         };
@@ -2384,6 +2408,7 @@
                     initialCloudSynced = true;
                 } catch (wsErr) {
                     updateDrawerSyncStatus(wsErr && wsErr.message ? wsErr.message : 'Sync offline');
+                    showToast('Cloud sync issue: ' + (wsErr && wsErr.message ? wsErr.message : 'Check connection'));
                 }
             }
 
@@ -2889,17 +2914,75 @@
             document.getElementById('eventModal').classList.remove('open');
         });
 
+
+        const INCOME_CATEGORIES = [
+            'Salary',
+            'Freelance / Side Job',
+            'Business Profit',
+            'Gift / Family Support',
+            'Rental Income',
+            'Investment',
+            'Loan',
+            'Other'
+        ];
+        const EXPENSE_CATEGORIES = [
+            'Food & Drinks',
+            'Asbeza',
+            'Transport',
+            'Ride Hailing',
+            'Shopping',
+            'House Rent',
+            'Electric Bill',
+            'Water Bill',
+            'Internet Bill',
+            'DSTV',
+            'School Fee',
+            'Medical',
+            'Mobile Airtime',
+            'Idir/Equb',
+            'Church/Mosque Giving',
+            'Loan Repayment',
+            'Savings',
+            'Clothing',
+            'Family Support',
+            'Events & Holidays',
+            'Furniture & Home',
+            'Electronics',
+            'Electronic',
+            'Others'
+        ];
+
+        function populateRecordCategories(typeVal) {
+            const catSelect = document.getElementById('recCategory');
+            if (!catSelect) return;
+            const list = typeVal === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+            const prev = catSelect.value;
+            catSelect.innerHTML = list.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            if (list.includes(prev)) catSelect.value = prev;
+        }
+
+        const recTypeSelectEl = document.getElementById('recType');
+        if (recTypeSelectEl) {
+            populateRecordCategories(recTypeSelectEl.value);
+            recTypeSelectEl.addEventListener('change', (ev) => {
+                populateRecordCategories(ev.target.value);
+            });
+        }
+
         document.getElementById('recordForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const type = document.getElementById('recType').value;
+            const account = (document.getElementById('recAccount') && document.getElementById('recAccount').value) || 'Cash';
             const category = document.getElementById('recCategory').value;
-            const note = document.getElementById('recNote').value.trim();
+            const rawNote = document.getElementById('recNote').value.trim();
+            const note = rawNote.includes(account) ? rawNote : `${account} • ${rawNote}`;
             const amount = parseFloat(document.getElementById('recAmount').value);
-            if (!note || isNaN(amount) || amount <= 0) return;
+            if (!rawNote || isNaN(amount) || amount <= 0) return;
 
             records.unshift({
                 id: Date.now(),
                 type,
+                account,
                 category,
                 note,
                 amount,
@@ -2909,6 +2992,7 @@
             saveUserState();
             renderAll();
             e.target.reset();
+            if (recTypeSelectEl) populateRecordCategories(recTypeSelectEl.value);
             document.getElementById('recordModal').classList.remove('open');
             showToast('Record saved');
         });
