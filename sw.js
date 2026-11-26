@@ -1,4 +1,4 @@
-const CACHE_NAME = 'galmee-herregaa-v26';
+const CACHE_NAME = 'galmee-herregaa-v27';
 const ASSETS = [
   './',
   './index.html',

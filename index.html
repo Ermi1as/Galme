@@ -1639,17 +1639,25 @@
         // ==========================================
         const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v26';
         const DEFAULT_CLOUD_CFG = {
-            url: 'https://uyygiyblgmkmluqszfen.supabase.co',
-            anonKey: 'Sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
+            url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
+            anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
             table: 'galmee_user_data'
         };
 
         function loadCloudConfig() {
             try {
                 const stored = JSON.parse(localStorage.getItem(CLOUD_CFG_STORAGE_KEY)) || {};
+                let cfgUrl = (stored.url || DEFAULT_CLOUD_CFG.url || '').trim();
+                let cfgKey = (stored.anonKey || DEFAULT_CLOUD_CFG.anonKey || '').trim();
+                if (cfgUrl === 'https://uyygiyblgmkmluqszfen.supabase.co') {
+                    cfgUrl = DEFAULT_CLOUD_CFG.url;
+                }
+                if (cfgKey === 'Sbp_fc2ac65074b4af5fab901595d7b52b8a150dbf2d' || cfgKey === 'Sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv') {
+                    cfgKey = DEFAULT_CLOUD_CFG.anonKey;
+                }
                 return {
-                    url: (stored.url || DEFAULT_CLOUD_CFG.url || '').trim(),
-                    anonKey: (stored.anonKey || DEFAULT_CLOUD_CFG.anonKey || '').trim(),
+                    url: cfgUrl,
+                    anonKey: cfgKey,
                     table: (stored.table || DEFAULT_CLOUD_CFG.table || 'galmee_user_data').trim()
                 };
             } catch (_) {
