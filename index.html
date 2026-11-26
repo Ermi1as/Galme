@@ -204,6 +204,27 @@
             border-color: var(--header-bg);
         }
 
+        .forgot-pass-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: -6px;
+            margin-bottom: 12px;
+        }
+
+        .forgot-pass-link {
+            background: none;
+            border: none;
+            color: var(--header-bg);
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        body.night-mode .forgot-pass-link {
+            color: #60a5fa;
+        }
+
         .submit-btn {
             width: 100%;
             background: var(--header-bg);
@@ -1627,6 +1648,7 @@
             document.getElementById('tabSignupBtn').classList.remove('active');
             document.getElementById('signupNameField').style.display = 'none';
             document.getElementById('authFullName').required = false;
+            document.getElementById('forgotPassRow').style.display = 'flex';
             updateAuthButtonLabel();
         });
 
@@ -1636,6 +1658,7 @@
             document.getElementById('tabLoginBtn').classList.remove('active');
             document.getElementById('signupNameField').style.display = 'block';
             document.getElementById('authFullName').required = true;
+            document.getElementById('forgotPassRow').style.display = 'none';
             updateAuthButtonLabel();
         });
 
@@ -1773,6 +1796,173 @@
             loadUserWorkspace(currentUserEmail);
             showToast('Email verified! Account created.');
         });
+
+        // ==========================================
+        // FORGOT PASSWORD -> EMAIL OTP -> RESET FLOW
+        // ==========================================
+        let resetTargetEmail = '';
+        let resetOtpCode = '';
+        let resetOtpExpiresAt = 0;
+
+        function hideAllAuthCards() {
+            document.getElementById('authStepCredentials').style.display = 'none';
+            document.getElementById('authStepOtp').style.display = 'none';
+            document.getElementById('authStepForgotEmail').style.display = 'none';
+            document.getElementById('authStepResetPassword').style.display = 'none';
+        }
+
+        document.getElementById('openForgotPassBtn').addEventListener('click', () => {
+            hideAllAuthCards();
+            const prefillEmail = document.getElementById('authEmail').value.trim();
+            document.getElementById('forgotEmailInput').value = prefillEmail;
+            document.getElementById('authStepForgotEmail').style.display = 'block';
+            document.getElementById('forgotEmailInput').focus();
+        });
+
+        document.getElementById('backFromForgotEmailBtn').addEventListener('click', () => {
+            hideAllAuthCards();
+            document.getElementById('authStepCredentials').style.display = 'block';
+        });
+
+        document.getElementById('cancelResetPassBtn').addEventListener('click', () => {
+            resetTargetEmail = '';
+            resetOtpCode = '';
+            hideAllAuthCards();
+            document.getElementById('authStepCredentials').style.display = 'block';
+        });
+
+        async function sendPasswordResetOtp(targetEmail) {
+            const knownName = (usersDb[targetEmail] && usersDb[targetEmail].name) || targetEmail.split('@')[0];
+            resetOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            resetOtpExpiresAt = Date.now() + 10 * 60 * 1000;
+            await dispatchRealEmailOtp(targetEmail, knownName, resetOtpCode);
+        }
+
+        document.getElementById('forgotEmailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('forgotEmailInput').value.trim().toLowerCase();
+            if (!email) {
+                showToast('Please enter your email address.');
+                return;
+            }
+
+            const btn = document.getElementById('sendResetOtpBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span>Sending reset code...</span>';
+
+            try {
+                resetTargetEmail = email;
+                await sendPasswordResetOtp(resetTargetEmail);
+                document.getElementById('resetOtpNotice').innerHTML =
+                    `A 6-digit password reset code was sent to <strong>${escapeHtml(resetTargetEmail)}</strong>. Enter the code and your new password below.`;
+                hideAllAuthCards();
+                document.getElementById('authStepResetPassword').style.display = 'block';
+                document.getElementById('resetOtpInput').value = '';
+                document.getElementById('newPasswordInput').value = '';
+                document.getElementById('confirmNewPasswordInput').value = '';
+                document.getElementById('resetOtpInput').focus();
+                showToast('Reset OTP sent to ' + resetTargetEmail);
+            } catch (err) {
+                showToast('Failed to send reset code: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Send Reset Code to Email</span>';
+            }
+        });
+
+        document.getElementById('resendResetOtpBtn').addEventListener('click', async () => {
+            if (!resetTargetEmail) return;
+            const btn = document.getElementById('resendResetOtpBtn');
+            btn.disabled = true;
+            btn.textContent = 'Resending...';
+            try {
+                await sendPasswordResetOtp(resetTargetEmail);
+                showToast('New reset code sent to ' + resetTargetEmail);
+            } catch (err) {
+                showToast('Failed to resend code: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Resend Reset Code';
+            }
+        });
+
+        document.getElementById('resetPasswordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const enteredCode = document.getElementById('resetOtpInput').value.trim();
+            const newPass = document.getElementById('newPasswordInput').value.trim();
+            const confirmPass = document.getElementById('confirmNewPasswordInput').value.trim();
+
+            if (!resetTargetEmail || !resetOtpCode) {
+                showToast('Reset session missing. Please request a code again.');
+                return;
+            }
+            if (Date.now() > resetOtpExpiresAt) {
+                showToast('Reset code expired. Tap Resend Reset Code.');
+                return;
+            }
+            if (enteredCode !== resetOtpCode) {
+                showToast('Incorrect 6-digit code. Please check your email.');
+                return;
+            }
+            if (newPass.length < 4) {
+                showToast('Password must be at least 4 characters.');
+                return;
+            }
+            if (newPass !== confirmPass) {
+                showToast('Passwords do not match.');
+                return;
+            }
+
+            if (!usersDb[resetTargetEmail]) {
+                usersDb[resetTargetEmail] = {
+                    name: resetTargetEmail.split('@')[0],
+                    password: newPass,
+                    verified: true,
+                    createdAt: new Date().toISOString()
+                };
+            } else {
+                usersDb[resetTargetEmail].password = newPass;
+                usersDb[resetTargetEmail].verified = true;
+            }
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
+
+            const restoredEmail = resetTargetEmail;
+            resetTargetEmail = '';
+            resetOtpCode = '';
+
+            hideAllAuthCards();
+            document.getElementById('authStepCredentials').style.display = 'block';
+            document.getElementById('authEmail').value = restoredEmail;
+            document.getElementById('authPassword').value = '';
+            showToast('Password reset successful! Sign in with your new password.');
+        });
+
+        // Eye toggles for New Password & Confirm Password
+        const toggleNewPassBtn = document.getElementById('toggleNewPassBtn');
+        const newPasswordInput = document.getElementById('newPasswordInput');
+        const newPassEyeIcon = document.getElementById('newPassEyeIcon');
+        if (toggleNewPassBtn && newPasswordInput) {
+            toggleNewPassBtn.addEventListener('click', () => {
+                const hidden = newPasswordInput.type === 'password';
+                newPasswordInput.type = hidden ? 'text' : 'password';
+                newPassEyeIcon.innerHTML = hidden
+                    ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+                    : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+            });
+        }
+
+        const toggleConfirmPassBtn = document.getElementById('toggleConfirmPassBtn');
+        const confirmNewPasswordInput = document.getElementById('confirmNewPasswordInput');
+        const confirmPassEyeIcon = document.getElementById('confirmPassEyeIcon');
+        if (toggleConfirmPassBtn && confirmNewPasswordInput) {
+            toggleConfirmPassBtn.addEventListener('click', () => {
+                const hidden = confirmNewPasswordInput.type === 'password';
+                confirmNewPasswordInput.type = hidden ? 'text' : 'password';
+                confirmPassEyeIcon.innerHTML = hidden
+                    ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+                    : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+            });
+        }
 
         function signOutUser() {
             closeDrawer();
