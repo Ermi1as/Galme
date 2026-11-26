@@ -1637,49 +1637,113 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        // Configure SUPABASE_URL and SUPABASE_ANON_KEY to sync accounts, records, events & settings across all phones.
-        // Table schema expected in Supabase:
-        //   create table if not exists public.galmee_user_data (
-        //     email text primary key,
-        //     user_profile jsonb not null default '{}'::jsonb,
-        //     records jsonb not null default '[]'::jsonb,
-        //     events jsonb not null default '[]'::jsonb,
-        //     settings jsonb not null default '{}'::jsonb,
-        //     updated_at timestamptz not null default now()
-        //   );
-        const CLOUD_SYNC_CFG = {
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v26';
+        const DEFAULT_CLOUD_CFG = {
             url: 'https://uyygiyblgmkmluqszfen.supabase.co',
-            anonKey: 'Sbp_fc2ac65074b4af5fab901595d7b52b8a150dbf2d',
+            anonKey: 'Sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
             table: 'galmee_user_data'
         };
 
-        function isCloudSyncEnabled() {
-            return Boolean(CLOUD_SYNC_CFG.url && CLOUD_SYNC_CFG.anonKey);
+        function loadCloudConfig() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(CLOUD_CFG_STORAGE_KEY)) || {};
+                return {
+                    url: (stored.url || DEFAULT_CLOUD_CFG.url || '').trim(),
+                    anonKey: (stored.anonKey || DEFAULT_CLOUD_CFG.anonKey || '').trim(),
+                    table: (stored.table || DEFAULT_CLOUD_CFG.table || 'galmee_user_data').trim()
+                };
+            } catch (_) {
+                return Object.assign({}, DEFAULT_CLOUD_CFG);
+            }
         }
 
-        function cloudHeaders() {
-            return {
+        let CLOUD_SYNC_CFG = loadCloudConfig();
+        let syncInFlight = false;
+        let lastSyncTimestamp = 0;
+
+        function pendingSyncKey(email) {
+            return `galmee_pending_sync_${(email || '').trim().toLowerCase()}`;
+        }
+
+        function setPendingCloudSync(email, pending) {
+            if (!email) return;
+            const k = pendingSyncKey(email);
+            if (pending) localStorage.setItem(k, '1');
+            else localStorage.removeItem(k);
+        }
+
+        function hasPendingCloudSync(email) {
+            if (!email) return false;
+            return localStorage.getItem(pendingSyncKey(email)) === '1';
+        }
+
+        function isCloudSyncEnabled() {
+            return Boolean(
+                CLOUD_SYNC_CFG.url &&
+                CLOUD_SYNC_CFG.anonKey &&
+                /^https?:\/\//i.test(CLOUD_SYNC_CFG.url)
+            );
+        }
+
+        function buildCloudHeaders(includeWritePrefer = false) {
+            const headers = {
                 'Content-Type': 'application/json',
                 'apikey': CLOUD_SYNC_CFG.anonKey,
-                'Authorization': `Bearer ${CLOUD_SYNC_CFG.anonKey}`,
-                'Prefer': 'return=representation,resolution=merge-duplicates'
+                'Authorization': `Bearer ${CLOUD_SYNC_CFG.anonKey}`
             };
+            if (includeWritePrefer) {
+                headers['Prefer'] = 'return=representation,resolution=merge-duplicates';
+            }
+            return headers;
+        }
+
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                return await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    throw new Error('Cloud request timed out. Check your connection.');
+                }
+                if (err && err.message === 'Failed to fetch') {
+                    throw new Error('Network unreachable or blocked (Failed to fetch). Check URL/API key or connection.');
+                }
+                throw err;
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        function formatCloudHttpError(status, rawText) {
+            let detail = rawText || '';
+            try {
+                const parsed = JSON.parse(rawText);
+                if (parsed && (parsed.message || parsed.error)) {
+                    detail = parsed.message || parsed.error;
+                }
+            } catch (_) {}
+            if (status === 401 || status === 403) {
+                return `Auth error (${status}): Verify your Supabase publishable/anon key and RLS policy. ${detail}`;
+            }
+            if (status === 404) {
+                return `Table not found (404): Ensure public.${CLOUD_SYNC_CFG.table} exists in Supabase.`;
+            }
+            return `Cloud sync error (${status}): ${detail || 'Request rejected'}`;
         }
 
         async function fetchCloudUserRow(email) {
             if (!isCloudSyncEnabled() || !email) return null;
             const normEmail = email.trim().toLowerCase();
-            const endpoint = `${CLOUD_SYNC_CFG.url.replace(/\/+$/, '')}/rest/v1/${CLOUD_SYNC_CFG.table}?email=eq.${encodeURIComponent(normEmail)}&select=*`;
-            const res = await fetch(endpoint, {
+            const baseUrl = CLOUD_SYNC_CFG.url.replace(/\/+$/, '');
+            const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(CLOUD_SYNC_CFG.table)}?email=eq.${encodeURIComponent(normEmail)}&select=*`;
+            const res = await fetchWithTimeout(endpoint, {
                 method: 'GET',
-                headers: {
-                    'apikey': CLOUD_SYNC_CFG.anonKey,
-                    'Authorization': `Bearer ${CLOUD_SYNC_CFG.anonKey}`
-                }
+                headers: buildCloudHeaders(false)
             });
             if (!res.ok) {
                 const txt = await res.text();
-                throw new Error(txt || 'Failed to read from cloud');
+                throw new Error(formatCloudHttpError(res.status, txt));
             }
             const rows = await res.json();
             return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
@@ -1688,63 +1752,132 @@
         async function pushCloudUserRow(email, profileObj, recArr, evtArr, setObj) {
             if (!isCloudSyncEnabled() || !email) return false;
             const normEmail = email.trim().toLowerCase();
-            const endpoint = `${CLOUD_SYNC_CFG.url.replace(/\/+$/, '')}/rest/v1/${CLOUD_SYNC_CFG.table}?on_conflict=email`;
-            const body = [{
+            const baseUrl = CLOUD_SYNC_CFG.url.replace(/\/+$/, '');
+            const endpoint = `${baseUrl}/rest/v1/${encodeURIComponent(CLOUD_SYNC_CFG.table)}?on_conflict=email`;
+            const safeProfile = Object.assign({}, profileObj || {});
+            const payload = [{
                 email: normEmail,
-                user_profile: profileObj || {},
+                user_profile: safeProfile,
                 records: Array.isArray(recArr) ? recArr : [],
                 events: Array.isArray(evtArr) ? evtArr : [],
                 settings: setObj || {},
                 updated_at: new Date().toISOString()
             }];
-            const res = await fetch(endpoint, {
+            const res = await fetchWithTimeout(endpoint, {
                 method: 'POST',
-                headers: cloudHeaders(),
-                body: JSON.stringify(body)
+                headers: buildCloudHeaders(true),
+                body: JSON.stringify(payload)
             });
             if (!res.ok) {
                 const txt = await res.text();
-                throw new Error(txt || 'Failed to sync to cloud');
+                throw new Error(formatCloudHttpError(res.status, txt));
             }
+            setPendingCloudSync(normEmail, false);
+            lastSyncTimestamp = Date.now();
             return true;
         }
 
-        async function pullAndMergeCloudWorkspace(email) {
+        function mergeRecordsById(localArr, remoteArr) {
+            const map = new Map();
+            (Array.isArray(remoteArr) ? remoteArr : []).forEach(item => {
+                if (item && item.id != null) map.set(String(item.id), item);
+            });
+            (Array.isArray(localArr) ? localArr : []).forEach(item => {
+                if (item && item.id != null && !map.has(String(item.id))) {
+                    map.set(String(item.id), item);
+                }
+            });
+            return Array.from(map.values()).sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+        }
+
+        async function pullAndMergeCloudWorkspace(email, pushLocalIfDirty = true) {
+            if (!isCloudSyncEnabled() || !email) return null;
             const normEmail = email.trim().toLowerCase();
             const remoteRow = await fetchCloudUserRow(normEmail);
-            if (!remoteRow) return null;
+            if (!remoteRow) {
+                if (pushLocalIfDirty) {
+                    await pushCloudUserRow(normEmail, usersDb[normEmail], records, events, settings);
+                }
+                return null;
+            }
 
             if (remoteRow.user_profile && typeof remoteRow.user_profile === 'object') {
-                usersDb[normEmail] = Object.assign({}, usersDb[normEmail] || {}, remoteRow.user_profile);
+                const localUser = usersDb[normEmail] || {};
+                usersDb[normEmail] = Object.assign({}, remoteRow.user_profile, {
+                    password: localUser.password || remoteRow.user_profile.password || ''
+                });
                 localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
             }
-            if (Array.isArray(remoteRow.records)) {
-                records = remoteRow.records;
+
+            const dirty = hasPendingCloudSync(normEmail);
+            if (dirty && pushLocalIfDirty) {
+                records = mergeRecordsById(records, remoteRow.records);
+                events = mergeRecordsById(events, remoteRow.events);
                 localStorage.setItem(userRecordsKey(normEmail), JSON.stringify(records));
-            }
-            if (Array.isArray(remoteRow.events)) {
-                events = remoteRow.events;
                 localStorage.setItem(userEventsKey(normEmail), JSON.stringify(events));
-            }
-            if (remoteRow.settings && typeof remoteRow.settings === 'object') {
-                settings = Object.assign({}, settings, remoteRow.settings);
-                localStorage.setItem(userSettingsKey(normEmail), JSON.stringify(settings));
+                await pushCloudUserRow(normEmail, usersDb[normEmail], records, events, settings);
+            } else {
+                if (Array.isArray(remoteRow.records)) {
+                    records = remoteRow.records;
+                    localStorage.setItem(userRecordsKey(normEmail), JSON.stringify(records));
+                }
+                if (Array.isArray(remoteRow.events)) {
+                    events = remoteRow.events;
+                    localStorage.setItem(userEventsKey(normEmail), JSON.stringify(events));
+                }
+                if (remoteRow.settings && typeof remoteRow.settings === 'object') {
+                    settings = Object.assign({}, settings, remoteRow.settings);
+                    localStorage.setItem(userSettingsKey(normEmail), JSON.stringify(settings));
+                }
+                setPendingCloudSync(normEmail, false);
+                lastSyncTimestamp = Date.now();
             }
             return remoteRow;
         }
 
-        async function syncCurrentUserToCloud(notifyUser = false) {
-            if (!currentUserEmail) return;
-            if (!isCloudSyncEnabled()) {
-                if (notifyUser) showToast('Saved locally (configure Cloud URL in code for cross-phone sync)');
+        async function runAutomaticSync(options = {}) {
+            const { forcePull = true, notifyOnError = false, notifyOnSuccess = false } = options;
+            if (!currentUserEmail || !isCloudSyncEnabled() || syncInFlight) return;
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                setPendingCloudSync(currentUserEmail, true);
                 return;
             }
+            syncInFlight = true;
             try {
-                await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
-                if (notifyUser) showToast('Synced across devices!');
+                if (hasPendingCloudSync(currentUserEmail)) {
+                    await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
+                }
+                if (forcePull) {
+                    const beforeJson = JSON.stringify({ records, events, settings });
+                    await pullAndMergeCloudWorkspace(currentUserEmail, true);
+                    const afterJson = JSON.stringify({ records, events, settings });
+                    if (beforeJson !== afterJson) {
+                        document.body.classList.toggle('night-mode', Boolean(settings.nightMode));
+                        applyTranslations();
+                        renderAll();
+                    }
+                } else {
+                    await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
+                }
+                if (notifyOnSuccess) showToast('Cloud synced');
             } catch (err) {
-                if (notifyUser) showToast('Cloud sync failed: ' + err.message);
+                setPendingCloudSync(currentUserEmail, true);
+                if (notifyOnError) {
+                    showToast(err && err.message ? err.message : 'Cloud sync failed');
+                }
+            } finally {
+                syncInFlight = false;
             }
+        }
+
+        async function syncCurrentUserToCloud(notifyUser = false) {
+            if (!currentUserEmail) return;
+            setPendingCloudSync(currentUserEmail, true);
+            await runAutomaticSync({
+                forcePull: false,
+                notifyOnError: notifyUser,
+                notifyOnSuccess: notifyUser
+            });
         }
 
         function userRecordsKey(email) { return `galmee_records_${email.toLowerCase()}`; }
@@ -2630,14 +2763,8 @@
                 showToast('Cloud sync not configured yet (local storage active)');
                 return;
             }
-            try {
-                await pullAndMergeCloudWorkspace(currentUserEmail);
-                await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
-                renderAll();
-                showToast('Synced with cloud across devices!');
-            } catch (err) {
-                showToast('Sync error: ' + err.message);
-            }
+            showToast('Syncing with cloud...');
+            await runAutomaticSync({ forcePull: true, notifyOnError: true, notifyOnSuccess: true });
         });
 
         document.getElementById('drawerBackdrop').addEventListener('click', closeDrawer);
@@ -2997,30 +3124,22 @@
         }
 
 
-        // Automatic background sync on load, save, network reconnect, tab focus, and periodic interval
+        // Automatic background sync on reconnect, visibility return, and periodic tick
         window.addEventListener('online', () => {
-            if (currentUserEmail && isCloudSyncEnabled()) {
-                pullAndMergeCloudWorkspace(currentUserEmail)
-                    .then(() => { renderAll(); })
-                    .catch(() => {});
-            }
+            runAutomaticSync({ forcePull: true, notifyOnError: false });
         });
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && currentUserEmail && isCloudSyncEnabled()) {
-                pullAndMergeCloudWorkspace(currentUserEmail)
-                    .then(() => { renderAll(); })
-                    .catch(() => {});
+            if (document.visibilityState === 'visible') {
+                runAutomaticSync({ forcePull: true, notifyOnError: false });
             }
         });
 
         setInterval(() => {
-            if (currentUserEmail && isCloudSyncEnabled() && navigator.onLine) {
-                pullAndMergeCloudWorkspace(currentUserEmail)
-                    .then(() => { renderAll(); })
-                    .catch(() => {});
+            if (document.visibilityState === 'visible') {
+                runAutomaticSync({ forcePull: true, notifyOnError: false });
             }
-        }, 20000);
+        }, 15000);
 
         // Boot Application
         updateAuthButtonLabel();

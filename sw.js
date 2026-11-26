@@ -1,4 +1,4 @@
-const CACHE_NAME = 'galmee-herregaa-v25';
+const CACHE_NAME = 'galmee-herregaa-v26';
 const ASSETS = [
   './',
   './index.html',
@@ -24,8 +24,8 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('api.emailjs.com')) return;
-  if (event.request.url.includes('supabase.co')) return;
+  const url = event.request.url;
+  if (url.includes('api.emailjs.com') || url.includes('supabase.co')) return;
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
