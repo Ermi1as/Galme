@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "Budget.com",
+        "sha256_cert_fingerprints": ["DC:C3:6A:0E:36:88:1F:ED:F2:BF:74:34:00:17:17:8F:66:B7:A5:24:5A:9D:77:45:8F:F2:F0:CD:92:CF:6C:83"]
+      }
+    }]
