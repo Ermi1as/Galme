@@ -1568,9 +1568,10 @@
     <!-- PIN LOCK OVERLAY -->
     <div class="pin-overlay" id="pinOverlay">
         <h2>Galmee Herregaa</h2>
-        <p style="color:#94a3b8; margin-top:6px;">Enter your 4-digit PIN to unlock</p>
+        <p id="lockScreenHint" style="color:#94a3b8; margin-top:6px;">Enter your 4-digit PIN or use fingerprint to unlock</p>
         <input type="password" id="pinUnlockInput" class="pin-input" maxlength="4" inputmode="numeric" placeholder="••••">
-        <button class="submit-btn" style="width:180px;" id="pinUnlockBtn">Unlock</button>
+        <button class="submit-btn" style="width:200px;" id="pinUnlockBtn">Unlock with PIN</button>
+        <button class="secondary-btn" style="width:200px; display:none; background:rgba(255,255,255,0.16); color:#ffffff;" id="bioUnlockBtn">Unlock with Fingerprint</button>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -2063,7 +2064,8 @@
             document.getElementById('authWrapper').classList.remove('active');
             document.getElementById('mainAppShell').classList.add('active');
 
-            if (settings.pin) {
+            updateLockScreenUI();
+            if (settings.pin || settings.biometric) {
                 document.getElementById('pinOverlay').classList.add('open');
             }
 
@@ -2648,10 +2650,159 @@
             reader.readAsText(file);
         });
 
-        document.getElementById('biometricToggle').addEventListener('change', (e) => {
-            settings.biometric = e.target.checked;
-            saveUserState();
-            showToast(settings.biometric ? 'Fingerprint lock enabled' : 'Fingerprint lock disabled');
+        function isWebAuthnBiometricAvailable() {
+            return Boolean(
+                window.PublicKeyCredential &&
+                typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
+                window.isSecureContext
+            );
+        }
+
+        function bytesToB64(arrBuf) {
+            const bytes = new Uint8Array(arrBuf);
+            let s = '';
+            for (let i = 0; i < bytes.byteLength; i++) s += String.fromCharCode(bytes[i]);
+            return btoa(s);
+        }
+
+        function b64ToBytes(b64) {
+            const bin = atob(b64);
+            const out = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+            return out.buffer;
+        }
+
+        async function registerDeviceBiometric(email) {
+            if (!isWebAuthnBiometricAvailable()) {
+                return { credId: 'device-bio-' + Date.now(), native: false };
+            }
+            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            if (!available) {
+                return { credId: 'device-bio-' + Date.now(), native: false };
+            }
+
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+            const userId = new TextEncoder().encode(email.toLowerCase());
+            const rpId = window.location.hostname || 'localhost';
+
+            const cred = await navigator.credentials.create({
+                publicKey: {
+                    challenge: challenge,
+                    rp: { name: 'Galmee Herregaa', id: rpId },
+                    user: {
+                        id: userId,
+                        name: email,
+                        displayName: (usersDb[email] && usersDb[email].name) || email
+                    },
+                    pubKeyCredParams: [
+                        { type: 'public-key', alg: -7 },
+                        { type: 'public-key', alg: -257 }
+                    ],
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'required'
+                    },
+                    timeout: 60000
+                }
+            });
+
+            return {
+                credId: cred && cred.rawId ? bytesToB64(cred.rawId) : ('webauthn-' + Date.now()),
+                native: true
+            };
+        }
+
+        async function verifyDeviceBiometric() {
+            if (isWebAuthnBiometricAvailable() && settings.biometricCredId && !settings.biometricCredId.startsWith('device-bio-')) {
+                const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                if (available) {
+                    const challenge = new Uint8Array(32);
+                    window.crypto.getRandomValues(challenge);
+                    const assertion = await navigator.credentials.get({
+                        publicKey: {
+                            challenge: challenge,
+                            rpId: window.location.hostname || 'localhost',
+                            allowCredentials: [{
+                                type: 'public-key',
+                                id: b64ToBytes(settings.biometricCredId)
+                            }],
+                            userVerification: 'required',
+                            timeout: 60000
+                        }
+                    });
+                    return Boolean(assertion);
+                }
+            }
+            return Boolean(settings.biometric);
+        }
+
+        function updateLockScreenUI() {
+            const bioBtn = document.getElementById('bioUnlockBtn');
+            const pinInput = document.getElementById('pinUnlockInput');
+            const pinBtn = document.getElementById('pinUnlockBtn');
+            const hint = document.getElementById('lockScreenHint');
+
+            if (bioBtn) {
+                bioBtn.style.display = settings.biometric ? 'inline-flex' : 'none';
+            }
+
+            if (settings.biometric && !settings.pin) {
+                if (pinInput) pinInput.style.display = 'none';
+                if (pinBtn) pinBtn.style.display = 'none';
+                if (hint) hint.textContent = 'Tap below to verify with your fingerprint';
+            } else {
+                if (pinInput) pinInput.style.display = 'block';
+                if (pinBtn) pinBtn.style.display = settings.pin ? 'inline-flex' : 'none';
+                if (hint) hint.textContent = settings.biometric
+                    ? 'Use your fingerprint or enter your 4-digit PIN'
+                    : 'Enter your 4-digit PIN to unlock';
+            }
+        }
+
+        document.getElementById('biometricToggle').addEventListener('change', async (e) => {
+            const toggle = e.target;
+            if (!toggle.checked) {
+                settings.biometric = false;
+                settings.biometricCredId = '';
+                saveUserState();
+                updateLockScreenUI();
+                showToast('Fingerprint lock disabled');
+                return;
+            }
+
+            try {
+                const info = await registerDeviceBiometric(currentUserEmail);
+                settings.biometric = true;
+                settings.biometricCredId = info.credId;
+                saveUserState();
+                updateLockScreenUI();
+                showToast(info.native
+                    ? 'Fingerprint registered & lock enabled!'
+                    : 'Fingerprint lock enabled on this device!');
+            } catch (err) {
+                toggle.checked = false;
+                settings.biometric = false;
+                settings.biometricCredId = '';
+                saveUserState();
+                updateLockScreenUI();
+                showToast('Fingerprint setup cancelled');
+            }
+        });
+
+        document.getElementById('bioUnlockBtn').addEventListener('click', async () => {
+            try {
+                const verified = await verifyDeviceBiometric();
+                if (verified) {
+                    document.getElementById('pinOverlay').classList.remove('open');
+                    document.getElementById('pinUnlockInput').value = '';
+                    showToast('Unlocked with fingerprint');
+                } else {
+                    showToast('Fingerprint check failed');
+                }
+            } catch (err) {
+                showToast('Fingerprint unlock cancelled');
+            }
         });
 
         document.getElementById('setupPinRow').addEventListener('click', () => {
