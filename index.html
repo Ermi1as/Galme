@@ -173,6 +173,33 @@
             outline: none;
         }
 
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-wrapper input {
+            padding-right: 42px;
+        }
+
+        .toggle-pass-btn {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+
+        .toggle-pass-btn:hover {
+            color: var(--text);
+        }
+
         .form-field input:focus, .form-field select:focus {
             border-color: var(--header-bg);
         }
@@ -1045,7 +1072,12 @@
                 </div>
                 <div class="form-field">
                     <label for="authPassword">Password</label>
-                    <input type="password" id="authPassword" required minlength="4" placeholder="••••••••">
+                    <div class="password-wrapper">
+                        <input type="password" id="authPassword" required minlength="4" placeholder="••••••••">
+                        <button type="button" class="toggle-pass-btn" id="togglePasswordBtn" aria-label="Show or hide password">
+                            <svg id="passEyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="submit-btn" id="sendOtpSubmitBtn">
                     <span>Send Verification Code to Email</span>
@@ -1058,10 +1090,7 @@
                 <div id="savedAccountsList"></div>
             </div>
 
-            <div class="email-config-banner">
-                Email Delivery Status: <strong id="smtpStatusBadge">Not Configured</strong> •
-                <span class="email-config-link" id="openEmailConfigBtn">Configure EmailJS</span>
-            </div>
+
         </div>
 
         <!-- Step 2: Real Email OTP Verification -->
@@ -1546,15 +1575,30 @@
 
         function updateEmailConfigBadges() {
             const configured = Boolean(emailConfig.serviceId && emailConfig.templateId && emailConfig.publicKey);
-            document.getElementById('smtpStatusBadge').textContent = configured ? 'Connected (Live Email)' : 'Direct Mode (Optional EmailJS)';
-            document.getElementById('smtpStatusBadge').style.color = configured ? '#16a34a' : '#2563eb';
-            document.getElementById('settingsEmailStatus').textContent = configured ? 'Connected' : 'Configure';
+            const settingsStatusEl = document.getElementById('settingsEmailStatus');
+            if (settingsStatusEl) {
+                settingsStatusEl.textContent = configured ? 'Connected' : 'Configure';
+            }
             const btnSpan = document.querySelector('#sendOtpSubmitBtn span');
             if (btnSpan) {
                 btnSpan.textContent = configured
                     ? 'Send Verification Code to Email'
                     : (isSignupMode ? 'Create Account' : 'Sign In');
             }
+        }
+
+        // Password Visibility Eye Toggle
+        const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+        const authPasswordInput = document.getElementById('authPassword');
+        const passEyeIcon = document.getElementById('passEyeIcon');
+        if (togglePasswordBtn && authPasswordInput) {
+            togglePasswordBtn.addEventListener('click', () => {
+                const isHidden = authPasswordInput.type === 'password';
+                authPasswordInput.type = isHidden ? 'text' : 'password';
+                passEyeIcon.innerHTML = isHidden
+                    ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+                    : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+            });
         }
 
         function renderSavedAccounts() {
@@ -1800,12 +1844,6 @@
         }
 
         // EmailJS Config Modal Handlers
-        document.getElementById('openEmailConfigBtn').addEventListener('click', () => {
-            document.getElementById('cfgServiceId').value = emailConfig.serviceId || '';
-            document.getElementById('cfgTemplateId').value = emailConfig.templateId || '';
-            document.getElementById('cfgPublicKey').value = emailConfig.publicKey || '';
-            document.getElementById('emailConfigModal').classList.add('open');
-        });
 
         document.getElementById('settingsEmailConfigRow').addEventListener('click', () => {
             document.getElementById('cfgServiceId').value = emailConfig.serviceId || '';
