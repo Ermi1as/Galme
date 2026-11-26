@@ -1216,14 +1216,6 @@
                             <span class="settings-name" data-i18n="exportRecord">Export Record</span>
                         </div>
                     </div>
-                                        <div class="settings-row" id="drawerSyncNowBtn">
-                        <div class="settings-left">
-                            <div class="settings-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                            </div>
-                            <span class="settings-name">Sync Cloud Data Now</span>
-                        </div>
-                    </div>
                     <div class="settings-row" id="drawerSwitchAccountBtn">
                         <div class="settings-left">
                             <div class="settings-icon">
@@ -1637,7 +1629,7 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v31';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v32';
         const DEFAULT_CLOUD_CFG = {
             url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
@@ -2760,6 +2752,7 @@
         function openDrawer() {
             document.getElementById('sideDrawer').classList.add('open');
             document.getElementById('drawerBackdrop').classList.add('open');
+            runAutomaticSync({ forcePull: true, notifyOnError: false });
         }
 
         function closeDrawer() {
@@ -2772,15 +2765,6 @@
             if (activeTab === 'records') openDrawer();
             else switchTab('records');
         });
-
-        document.getElementById('drawerSyncNowBtn').addEventListener('click', async () => {
-            closeDrawer();
-            if (!isCloudSyncEnabled()) {
-                showToast('Cloud sync not configured yet (local storage active)');
-                return;
-            }
-            showToast('Syncing with cloud...');
-            await runAutomaticSync({ forcePull: true, notifyOnError: true, notifyOnSuccess: true });
         });
 
         document.getElementById('drawerBackdrop').addEventListener('click', closeDrawer);
