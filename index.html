@@ -2996,6 +2996,32 @@
             localStorage.setItem('galmee_v6_initialized', 'true');
         }
 
+
+        // Automatic background sync on load, save, network reconnect, tab focus, and periodic interval
+        window.addEventListener('online', () => {
+            if (currentUserEmail && isCloudSyncEnabled()) {
+                pullAndMergeCloudWorkspace(currentUserEmail)
+                    .then(() => { renderAll(); })
+                    .catch(() => {});
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && currentUserEmail && isCloudSyncEnabled()) {
+                pullAndMergeCloudWorkspace(currentUserEmail)
+                    .then(() => { renderAll(); })
+                    .catch(() => {});
+            }
+        });
+
+        setInterval(() => {
+            if (currentUserEmail && isCloudSyncEnabled() && navigator.onLine) {
+                pullAndMergeCloudWorkspace(currentUserEmail)
+                    .then(() => { renderAll(); })
+                    .catch(() => {});
+            }
+        }, 20000);
+
         // Boot Application
         updateAuthButtonLabel();
 
