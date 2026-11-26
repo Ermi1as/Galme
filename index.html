@@ -1254,7 +1254,7 @@
                     </div>
                 </div>
             </div>
-            <div class="drawer-footer">Galmee Herregaa v1.0.0</div>
+            <div class="drawer-footer" id="drawerFooterVersion">Galmee Herregaa v1.0.0</div>
         </aside>
 
         <!-- 1. RECORDS VIEW -->
@@ -1629,7 +1629,7 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v33';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v35';
         const DEFAULT_CLOUD_CFG = {
             url: 'https://uyygiyblgmkmluqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
@@ -1673,16 +1673,47 @@
             return `galmee_pending_sync_${(email || '').trim().toLowerCase()}`;
         }
 
+        function deletedIdsKey(email) {
+            return `galmee_deleted_ids_${(email || '').trim().toLowerCase()}`;
+        }
+
+        function getDeletedIdsSet(email) {
+            try {
+                const arr = JSON.parse(localStorage.getItem(deletedIdsKey(email))) || [];
+                return new Set(arr.map(String));
+            } catch (_) {
+                return new Set();
+            }
+        }
+
+        function markIdDeleted(email, id) {
+            if (!email || id == null) return;
+            const set = getDeletedIdsSet(email);
+            set.add(String(id));
+            try {
+                localStorage.setItem(deletedIdsKey(email), JSON.stringify(Array.from(set).slice(-500)));
+            } catch (_) {}
+        }
+
         function setPendingCloudSync(email, pending) {
             if (!email) return;
             const k = pendingSyncKey(email);
-            if (pending) localStorage.setItem(k, '1');
-            else localStorage.removeItem(k);
+            try {
+                if (pending) localStorage.setItem(k, '1');
+                else localStorage.removeItem(k);
+            } catch (_) {}
         }
 
         function hasPendingCloudSync(email) {
             if (!email) return false;
             return localStorage.getItem(pendingSyncKey(email)) === '1';
+        }
+
+        function updateDrawerSyncStatus(text) {
+            const el = document.getElementById('drawerFooterVersion');
+            if (el) {
+                el.textContent = text ? `Galmee Herregaa • ${text}` : 'Galmee Herregaa v1.0.0';
+            }
         }
 
         function isCloudSyncEnabled() {
@@ -1785,26 +1816,29 @@
             return true;
         }
 
-        function mergeRecordsById(localArr, remoteArr) {
+        function mergeRecordsById(localArr, remoteArr, deletedSet = new Set()) {
             const map = new Map();
             (Array.isArray(remoteArr) ? remoteArr : []).forEach(item => {
-                if (item && item.id != null) map.set(String(item.id), item);
+                if (item && item.id != null && !deletedSet.has(String(item.id))) {
+                    map.set(String(item.id), item);
+                }
             });
             (Array.isArray(localArr) ? localArr : []).forEach(item => {
-                if (item && item.id != null && !map.has(String(item.id))) {
+                if (item && item.id != null && !deletedSet.has(String(item.id)) && !map.has(String(item.id))) {
                     map.set(String(item.id), item);
                 }
             });
             return Array.from(map.values()).sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
         }
 
-        async function pullAndMergeCloudWorkspace(email, pushLocalIfDirty = true) {
+        async function pullAndMergeCloudWorkspace(email, pushMergedBack = true) {
             if (!isCloudSyncEnabled() || !email) return null;
             const normEmail = email.trim().toLowerCase();
             const remoteRow = await fetchCloudUserRow(normEmail);
             if (!remoteRow) {
-                if (pushLocalIfDirty) {
+                if (pushMergedBack) {
                     await pushCloudUserRow(normEmail, usersDb[normEmail], records, events, settings);
+                    updateDrawerSyncStatus('Cloud synced');
                 }
                 return null;
             }
@@ -1814,47 +1848,50 @@
                 usersDb[normEmail] = Object.assign({}, remoteRow.user_profile, {
                     password: localUser.password || remoteRow.user_profile.password || ''
                 });
-                localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
+                try { localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb)); } catch (_) {}
             }
 
-            const dirty = hasPendingCloudSync(normEmail);
-            if (dirty && pushLocalIfDirty) {
-                records = mergeRecordsById(records, remoteRow.records);
-                events = mergeRecordsById(events, remoteRow.events);
+            const deletedSet = getDeletedIdsSet(normEmail);
+            const mergedRecords = mergeRecordsById(records, remoteRow.records, deletedSet);
+            const mergedEvents = mergeRecordsById(events, remoteRow.events, deletedSet);
+            const remoteRecordsJson = JSON.stringify(Array.isArray(remoteRow.records) ? remoteRow.records : []);
+            const remoteEventsJson = JSON.stringify(Array.isArray(remoteRow.events) ? remoteRow.events : []);
+            const needsCloudUpdate = hasPendingCloudSync(normEmail) ||
+                JSON.stringify(mergedRecords) !== remoteRecordsJson ||
+                JSON.stringify(mergedEvents) !== remoteEventsJson;
+
+            records = mergedRecords;
+            events = mergedEvents;
+            try {
                 localStorage.setItem(userRecordsKey(normEmail), JSON.stringify(records));
                 localStorage.setItem(userEventsKey(normEmail), JSON.stringify(events));
+            } catch (_) {}
+
+            if (remoteRow.settings && typeof remoteRow.settings === 'object' && !hasPendingCloudSync(normEmail)) {
+                settings = Object.assign({}, settings, remoteRow.settings);
+                try { localStorage.setItem(userSettingsKey(normEmail), JSON.stringify(settings)); } catch (_) {}
+            }
+
+            if (needsCloudUpdate && pushMergedBack) {
                 await pushCloudUserRow(normEmail, usersDb[normEmail], records, events, settings);
             } else {
-                if (Array.isArray(remoteRow.records)) {
-                    records = remoteRow.records;
-                    localStorage.setItem(userRecordsKey(normEmail), JSON.stringify(records));
-                }
-                if (Array.isArray(remoteRow.events)) {
-                    events = remoteRow.events;
-                    localStorage.setItem(userEventsKey(normEmail), JSON.stringify(events));
-                }
-                if (remoteRow.settings && typeof remoteRow.settings === 'object') {
-                    settings = Object.assign({}, settings, remoteRow.settings);
-                    localStorage.setItem(userSettingsKey(normEmail), JSON.stringify(settings));
-                }
                 setPendingCloudSync(normEmail, false);
                 lastSyncTimestamp = Date.now();
             }
+            updateDrawerSyncStatus('Cloud synced');
             return remoteRow;
         }
 
         async function runAutomaticSync(options = {}) {
-            const { forcePull = true, notifyOnError = false, notifyOnSuccess = false } = options;
+            const { forcePull = true, notifyOnError = false, notifyOnSuccess = true } = options;
             if (!currentUserEmail || !isCloudSyncEnabled() || syncInFlight) return;
             if (typeof navigator !== 'undefined' && navigator.onLine === false) {
                 setPendingCloudSync(currentUserEmail, true);
+                updateDrawerSyncStatus('Offline (queued)');
                 return;
             }
             syncInFlight = true;
             try {
-                if (hasPendingCloudSync(currentUserEmail)) {
-                    await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
-                }
                 if (forcePull) {
                     const beforeJson = JSON.stringify({ records, events, settings });
                     await pullAndMergeCloudWorkspace(currentUserEmail, true);
@@ -1865,26 +1902,28 @@
                         renderAll();
                     }
                 } else {
-                    await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
+                    await pullAndMergeCloudWorkspace(currentUserEmail, true);
                 }
-                if (notifyOnSuccess) showToast('Cloud synced');
+                if (notifyOnSuccess) showToast('Account synced');
             } catch (err) {
                 setPendingCloudSync(currentUserEmail, true);
+                const msg = err && err.message ? err.message : 'Sync pending';
+                updateDrawerSyncStatus(msg);
                 if (notifyOnError) {
-                    showToast(err && err.message ? err.message : 'Cloud sync failed');
+                    showToast(msg);
                 }
             } finally {
                 syncInFlight = false;
             }
         }
 
-        async function syncCurrentUserToCloud(notifyUser = false) {
+        async function syncCurrentUserToCloud(notifyUser = true) {
             if (!currentUserEmail) return;
             setPendingCloudSync(currentUserEmail, true);
             await runAutomaticSync({
                 forcePull: false,
                 notifyOnError: notifyUser,
-                notifyOnSuccess: notifyUser
+                notifyOnSuccess: true
             });
         }
 
@@ -2010,7 +2049,6 @@
                         currentUserEmail = email;
                         try { localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail); } catch (_) {}
                         await loadUserWorkspace(currentUserEmail);
-                        showToast('Signed in successfully!');
                         return;
                     }
 
@@ -2024,7 +2062,6 @@
                     currentUserEmail = email;
                     try { localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail); } catch (_) {}
                     await loadUserWorkspace(currentUserEmail);
-                    showToast('Signed in to your account!');
                 } catch (loginErr) {
                     showToast('Sign in error: ' + (loginErr && loginErr.message ? loginErr.message : 'Try again'));
                 } finally {
@@ -2334,6 +2371,7 @@
                 pin: ''
             };
 
+            let initialCloudSynced = false;
             if (isCloudSyncEnabled()) {
                 try {
                     const remote = await pullAndMergeCloudWorkspace(normEmail);
@@ -2342,8 +2380,10 @@
                     } else {
                         await pushCloudUserRow(normEmail, userObj, records, events, settings);
                     }
-                } catch (_) {
-                    // Continue with local cache if offline
+                    initialCloudSynced = true;
+                } catch (wsErr) {
+                    updateDrawerSyncStatus(wsErr && wsErr.message ? wsErr.message : 'Sync offline');
+                    showToast('Cloud sync issue: ' + (wsErr && wsErr.message ? wsErr.message : 'Check connection'));
                 }
             }
 
@@ -2366,6 +2406,9 @@
 
             applyTranslations();
             switchTab('records');
+            if (initialCloudSynced) {
+                showToast('Account synced');
+            }
         }
 
         function saveUserState() {
@@ -2745,6 +2788,7 @@
         }
 
         function deleteRecord(id) {
+            markIdDeleted(currentUserEmail, id);
             records = records.filter(r => r.id !== id);
             saveUserState();
             renderAll();
@@ -2752,6 +2796,7 @@
         }
 
         function deleteEvent(id) {
+            markIdDeleted(currentUserEmail, id);
             events = events.filter(e => e.id !== id);
             saveUserState();
             renderEvents();
@@ -3148,7 +3193,7 @@
             if (document.visibilityState === 'visible') {
                 runAutomaticSync({ forcePull: true, notifyOnError: false });
             }
-        }, 15000);
+        }, 8000);
 
         // Boot Application
         updateAuthButtonLabel();
