@@ -207,7 +207,7 @@
         .forgot-pass-row {
             display: flex;
             justify-content: flex-end;
-            margin-top: -6px;
+            margin-top: -4px;
             margin-bottom: 12px;
         }
 
@@ -215,7 +215,7 @@
             background: none;
             border: none;
             color: var(--header-bg);
-            font-size: 0.82rem;
+            font-size: 0.84rem;
             font-weight: 700;
             cursor: pointer;
             text-decoration: underline;
@@ -1100,14 +1100,66 @@
                         </button>
                     </div>
                 </div>
+                <div class="forgot-pass-row" id="forgotPassRow">
+                    <button type="button" class="forgot-pass-link" id="openForgotPassBtn">Forgot Password?</button>
+                </div>
                 <button type="submit" class="submit-btn" id="authSubmitBtn">
                     <span id="authSubmitLabel">Sign In</span>
                 </button>
             </form>
+        </div>
 
+        <!-- Forgot Password Step 1: Ask Email & Send OTP -->
+        <div class="auth-card" id="authStepForgotEmail" style="display: none;">
+            <h3 style="font-size: 1.08rem; font-weight: 800; margin-bottom: 10px; text-align: center;">Forgot Password</h3>
+            <div class="email-status-box">
+                Enter your email address below. We will send a 6-digit verification code to your email so you can reset your password.
+            </div>
+            <form id="forgotEmailForm">
+                <div class="form-field">
+                    <label for="forgotEmailInput">Email Address</label>
+                    <input type="email" id="forgotEmailInput" required placeholder="you@gmail.com">
+                </div>
+                <button type="submit" class="submit-btn" id="sendResetOtpBtn">
+                    <span>Send OTP to Email</span>
+                </button>
+                <button type="button" class="secondary-btn" id="backFromForgotEmailBtn">Back to Sign In</button>
+            </form>
+        </div>
 
-
-
+        <!-- Forgot Password Step 2: Enter Email OTP & Reset Password -->
+        <div class="auth-card" id="authStepResetPassword" style="display: none;">
+            <h3 style="font-size: 1.08rem; font-weight: 800; margin-bottom: 10px; text-align: center;">Reset Password</h3>
+            <div class="email-status-box" id="resetOtpNotice">
+                Enter the 6-digit code sent to your email and set your new password.
+            </div>
+            <form id="resetPasswordForm">
+                <div class="form-field">
+                    <label for="resetOtpInput">6-Digit Code from Email</label>
+                    <input type="text" id="resetOtpInput" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="000000" style="text-align: center; font-size: 1.25rem; font-weight: 800; letter-spacing: 8px;">
+                </div>
+                <div class="form-field">
+                    <label for="newPasswordInput">New Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="newPasswordInput" required minlength="4" placeholder="Enter new password">
+                        <button type="button" class="toggle-pass-btn" id="toggleNewPassBtn" aria-label="Show or hide new password">
+                            <svg id="newPassEyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label for="confirmNewPasswordInput">Confirm New Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="confirmNewPasswordInput" required minlength="4" placeholder="Confirm new password">
+                        <button type="button" class="toggle-pass-btn" id="toggleConfirmPassBtn" aria-label="Show or hide confirm password">
+                            <svg id="confirmPassEyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn" id="confirmResetPassBtn">Save New Password</button>
+                <button type="button" class="secondary-btn" id="resendResetOtpBtn">Resend Code to Email</button>
+                <button type="button" class="secondary-btn" id="cancelResetPassBtn">Back to Sign In</button>
+            </form>
         </div>
 
         <!-- Step 2: Real Email OTP Verification -->
@@ -1813,8 +1865,7 @@
 
         document.getElementById('openForgotPassBtn').addEventListener('click', () => {
             hideAllAuthCards();
-            const prefillEmail = document.getElementById('authEmail').value.trim();
-            document.getElementById('forgotEmailInput').value = prefillEmail;
+            document.getElementById('forgotEmailInput').value = document.getElementById('authEmail').value.trim();
             document.getElementById('authStepForgotEmail').style.display = 'block';
             document.getElementById('forgotEmailInput').focus();
         });
@@ -1848,13 +1899,13 @@
 
             const btn = document.getElementById('sendResetOtpBtn');
             btn.disabled = true;
-            btn.innerHTML = '<span>Sending reset code...</span>';
+            btn.innerHTML = '<span>Sending OTP to email...</span>';
 
             try {
                 resetTargetEmail = email;
                 await sendPasswordResetOtp(resetTargetEmail);
                 document.getElementById('resetOtpNotice').innerHTML =
-                    `A 6-digit password reset code was sent to <strong>${escapeHtml(resetTargetEmail)}</strong>. Enter the code and your new password below.`;
+                    `A 6-digit reset OTP was sent to <strong>${escapeHtml(resetTargetEmail)}</strong>. Enter the code and your new password below.`;
                 hideAllAuthCards();
                 document.getElementById('authStepResetPassword').style.display = 'block';
                 document.getElementById('resetOtpInput').value = '';
@@ -1863,10 +1914,10 @@
                 document.getElementById('resetOtpInput').focus();
                 showToast('Reset OTP sent to ' + resetTargetEmail);
             } catch (err) {
-                showToast('Failed to send reset code: ' + err.message);
+                showToast('Failed to send OTP: ' + err.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<span>Send Reset Code to Email</span>';
+                btn.innerHTML = '<span>Send OTP to Email</span>';
             }
         });
 
@@ -1877,12 +1928,12 @@
             btn.textContent = 'Resending...';
             try {
                 await sendPasswordResetOtp(resetTargetEmail);
-                showToast('New reset code sent to ' + resetTargetEmail);
+                showToast('New OTP sent to ' + resetTargetEmail);
             } catch (err) {
-                showToast('Failed to resend code: ' + err.message);
+                showToast('Failed to resend OTP: ' + err.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Resend Reset Code';
+                btn.textContent = 'Resend Code to Email';
             }
         });
 
@@ -1893,15 +1944,15 @@
             const confirmPass = document.getElementById('confirmNewPasswordInput').value.trim();
 
             if (!resetTargetEmail || !resetOtpCode) {
-                showToast('Reset session missing. Please request a code again.');
+                showToast('Reset session missing. Please request OTP again.');
                 return;
             }
             if (Date.now() > resetOtpExpiresAt) {
-                showToast('Reset code expired. Tap Resend Reset Code.');
+                showToast('OTP expired. Tap Resend Code to Email.');
                 return;
             }
             if (enteredCode !== resetOtpCode) {
-                showToast('Incorrect 6-digit code. Please check your email.');
+                showToast('Incorrect 6-digit code. Check your email and try again.');
                 return;
             }
             if (newPass.length < 4) {
@@ -1934,10 +1985,9 @@
             document.getElementById('authStepCredentials').style.display = 'block';
             document.getElementById('authEmail').value = restoredEmail;
             document.getElementById('authPassword').value = '';
-            showToast('Password reset successful! Sign in with your new password.');
+            showToast('Password reset! Sign in with your new password.');
         });
 
-        // Eye toggles for New Password & Confirm Password
         const toggleNewPassBtn = document.getElementById('toggleNewPassBtn');
         const newPasswordInput = document.getElementById('newPasswordInput');
         const newPassEyeIcon = document.getElementById('newPassEyeIcon');
