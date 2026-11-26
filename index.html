@@ -1523,10 +1523,16 @@
         const EMAILJS_CFG_KEY = 'galmee_emailjs_cfg_v5';
 
         // Default Pre-Configured EmailJS keys (users can replace with their own in Settings)
-        let emailConfig = JSON.parse(localStorage.getItem(EMAILJS_CFG_KEY)) || {
-            serviceId: '',
-            templateId: '',
-            publicKey: ''
+        const DEFAULT_EMAILJS_CFG = {
+            serviceId: 'service_i2gejfk',
+            templateId: 'template_okbudhx',
+            publicKey: 'e_sobve1DGn4MsVbQ'
+        };
+        let savedEmailCfg = JSON.parse(localStorage.getItem(EMAILJS_CFG_KEY)) || {};
+        let emailConfig = {
+            serviceId: savedEmailCfg.serviceId || DEFAULT_EMAILJS_CFG.serviceId,
+            templateId: savedEmailCfg.templateId || DEFAULT_EMAILJS_CFG.templateId,
+            publicKey: savedEmailCfg.publicKey || DEFAULT_EMAILJS_CFG.publicKey
         };
 
         let usersDb = JSON.parse(localStorage.getItem(USERS_DB_KEY)) || {};
@@ -1846,9 +1852,9 @@
         // EmailJS Config Modal Handlers
 
         document.getElementById('settingsEmailConfigRow').addEventListener('click', () => {
-            document.getElementById('cfgServiceId').value = emailConfig.serviceId || '';
-            document.getElementById('cfgTemplateId').value = emailConfig.templateId || '';
-            document.getElementById('cfgPublicKey').value = emailConfig.publicKey || '';
+            document.getElementById('cfgServiceId').value = emailConfig.serviceId || DEFAULT_EMAILJS_CFG.serviceId;
+            document.getElementById('cfgTemplateId').value = emailConfig.templateId || DEFAULT_EMAILJS_CFG.templateId;
+            document.getElementById('cfgPublicKey').value = emailConfig.publicKey || DEFAULT_EMAILJS_CFG.publicKey;
             document.getElementById('emailConfigModal').classList.add('open');
         });
 
