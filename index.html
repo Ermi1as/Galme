@@ -1216,6 +1216,14 @@
                             <span class="settings-name" data-i18n="exportRecord">Export Record</span>
                         </div>
                     </div>
+                                        <div class="settings-row" id="drawerSyncNowBtn">
+                        <div class="settings-left">
+                            <div class="settings-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            </div>
+                            <span class="settings-name">Sync Cloud Data Now</span>
+                        </div>
+                    </div>
                     <div class="settings-row" id="drawerSwitchAccountBtn">
                         <div class="settings-left">
                             <div class="settings-icon">
@@ -1626,6 +1634,119 @@
         let reportPeriod = 'monthly';
         let hideBalances = false;
 
+        // ==========================================
+        // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
+        // ==========================================
+        // Configure SUPABASE_URL and SUPABASE_ANON_KEY to sync accounts, records, events & settings across all phones.
+        // Table schema expected in Supabase:
+        //   create table if not exists public.galmee_user_data (
+        //     email text primary key,
+        //     user_profile jsonb not null default '{}'::jsonb,
+        //     records jsonb not null default '[]'::jsonb,
+        //     events jsonb not null default '[]'::jsonb,
+        //     settings jsonb not null default '{}'::jsonb,
+        //     updated_at timestamptz not null default now()
+        //   );
+        const CLOUD_SYNC_CFG = {
+            url: '',
+            anonKey: '',
+            table: 'galmee_user_data'
+        };
+
+        function isCloudSyncEnabled() {
+            return Boolean(CLOUD_SYNC_CFG.url && CLOUD_SYNC_CFG.anonKey);
+        }
+
+        function cloudHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'apikey': CLOUD_SYNC_CFG.anonKey,
+                'Authorization': `Bearer ${CLOUD_SYNC_CFG.anonKey}`,
+                'Prefer': 'return=representation,resolution=merge-duplicates'
+            };
+        }
+
+        async function fetchCloudUserRow(email) {
+            if (!isCloudSyncEnabled() || !email) return null;
+            const normEmail = email.trim().toLowerCase();
+            const endpoint = `${CLOUD_SYNC_CFG.url.replace(/\/+$/, '')}/rest/v1/${CLOUD_SYNC_CFG.table}?email=eq.${encodeURIComponent(normEmail)}&select=*`;
+            const res = await fetch(endpoint, {
+                method: 'GET',
+                headers: {
+                    'apikey': CLOUD_SYNC_CFG.anonKey,
+                    'Authorization': `Bearer ${CLOUD_SYNC_CFG.anonKey}`
+                }
+            });
+            if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(txt || 'Failed to read from cloud');
+            }
+            const rows = await res.json();
+            return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+        }
+
+        async function pushCloudUserRow(email, profileObj, recArr, evtArr, setObj) {
+            if (!isCloudSyncEnabled() || !email) return false;
+            const normEmail = email.trim().toLowerCase();
+            const endpoint = `${CLOUD_SYNC_CFG.url.replace(/\/+$/, '')}/rest/v1/${CLOUD_SYNC_CFG.table}?on_conflict=email`;
+            const body = [{
+                email: normEmail,
+                user_profile: profileObj || {},
+                records: Array.isArray(recArr) ? recArr : [],
+                events: Array.isArray(evtArr) ? evtArr : [],
+                settings: setObj || {},
+                updated_at: new Date().toISOString()
+            }];
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: cloudHeaders(),
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(txt || 'Failed to sync to cloud');
+            }
+            return true;
+        }
+
+        async function pullAndMergeCloudWorkspace(email) {
+            const normEmail = email.trim().toLowerCase();
+            const remoteRow = await fetchCloudUserRow(normEmail);
+            if (!remoteRow) return null;
+
+            if (remoteRow.user_profile && typeof remoteRow.user_profile === 'object') {
+                usersDb[normEmail] = Object.assign({}, usersDb[normEmail] || {}, remoteRow.user_profile);
+                localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
+            }
+            if (Array.isArray(remoteRow.records)) {
+                records = remoteRow.records;
+                localStorage.setItem(userRecordsKey(normEmail), JSON.stringify(records));
+            }
+            if (Array.isArray(remoteRow.events)) {
+                events = remoteRow.events;
+                localStorage.setItem(userEventsKey(normEmail), JSON.stringify(events));
+            }
+            if (remoteRow.settings && typeof remoteRow.settings === 'object') {
+                settings = Object.assign({}, settings, remoteRow.settings);
+                localStorage.setItem(userSettingsKey(normEmail), JSON.stringify(settings));
+            }
+            return remoteRow;
+        }
+
+        async function syncCurrentUserToCloud(notifyUser = false) {
+            if (!currentUserEmail) return;
+            if (!isCloudSyncEnabled()) {
+                if (notifyUser) showToast('Saved locally (configure Cloud URL in code for cross-phone sync)');
+                return;
+            }
+            try {
+                await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
+                if (notifyUser) showToast('Synced across devices!');
+            } catch (err) {
+                if (notifyUser) showToast('Cloud sync failed: ' + err.message);
+            }
+        }
+
         function userRecordsKey(email) { return `galmee_records_${email.toLowerCase()}`; }
         function userEventsKey(email) { return `galmee_events_${email.toLowerCase()}`; }
         function userSettingsKey(email) { return `galmee_settings_${email.toLowerCase()}`; }
@@ -1723,22 +1844,31 @@
             const fullName = document.getElementById('authFullName').value.trim();
 
             if (!isSignupMode) {
-                // LOGIN FLOW: Direct login without OTP prompt
-                const existingUser = usersDb[email];
+                // LOGIN FLOW: Direct login without OTP prompt; checks cloud first for cross-device password & records
+                let existingUser = usersDb[email];
+                if (!existingUser && isCloudSyncEnabled()) {
+                    try {
+                        const cloudRow = await fetchCloudUserRow(email);
+                        if (cloudRow && cloudRow.user_profile) {
+                            existingUser = cloudRow.user_profile;
+                            usersDb[email] = existingUser;
+                            localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
+                        }
+                    } catch (_) {}
+                }
+
                 if (existingUser) {
-                    if (existingUser.password !== password) {
+                    if (existingUser.password && existingUser.password !== password) {
                         showToast('Invalid email or password.');
                         return;
                     }
                     currentUserEmail = email;
                     localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail);
-                    loadUserWorkspace(currentUserEmail);
+                    await loadUserWorkspace(currentUserEmail);
                     showToast('Signed in successfully!');
                     return;
                 }
 
-                // If logging in on another device where localStorage doesn't yet have this account,
-                // create/link the account profile locally with the provided email & password so cross-device sign-in works seamlessly
                 usersDb[email] = {
                     name: email.split('@')[0],
                     password: password,
@@ -1748,7 +1878,7 @@
                 localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
                 currentUserEmail = email;
                 localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail);
-                loadUserWorkspace(currentUserEmail);
+                await loadUserWorkspace(currentUserEmail);
                 showToast('Signed in to your account!');
                 return;
             }
@@ -2034,16 +2164,17 @@
         // ==========================================
         // LOAD USER-ISOLATED WORKSPACE
         // ==========================================
-        function loadUserWorkspace(email) {
-            const userObj = usersDb[email];
+        async function loadUserWorkspace(email) {
+            const normEmail = email.trim().toLowerCase();
+            let userObj = usersDb[normEmail];
             if (!userObj) {
                 signOutUser();
                 return;
             }
 
-            records = JSON.parse(localStorage.getItem(userRecordsKey(email))) || [];
-            events = JSON.parse(localStorage.getItem(userEventsKey(email))) || [];
-            settings = JSON.parse(localStorage.getItem(userSettingsKey(email))) || {
+            records = JSON.parse(localStorage.getItem(userRecordsKey(normEmail))) || [];
+            events = JSON.parse(localStorage.getItem(userEventsKey(normEmail))) || [];
+            settings = JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {
                 lang: 'en',
                 currency: 'ETB',
                 ethCal: true,
@@ -2051,6 +2182,19 @@
                 biometric: false,
                 pin: ''
             };
+
+            if (isCloudSyncEnabled()) {
+                try {
+                    const remote = await pullAndMergeCloudWorkspace(normEmail);
+                    if (remote) {
+                        userObj = usersDb[normEmail];
+                    } else {
+                        await pushCloudUserRow(normEmail, userObj, records, events, settings);
+                    }
+                } catch (_) {
+                    // Continue with local cache if offline
+                }
+            }
 
             document.getElementById('drawerUserName').textContent = userObj.name || 'Account';
             document.getElementById('drawerUserEmail').textContent = email;
@@ -2078,6 +2222,7 @@
             localStorage.setItem(userRecordsKey(currentUserEmail), JSON.stringify(records));
             localStorage.setItem(userEventsKey(currentUserEmail), JSON.stringify(events));
             localStorage.setItem(userSettingsKey(currentUserEmail), JSON.stringify(settings));
+            syncCurrentUserToCloud(false);
         }
 
         // Translations
@@ -2477,6 +2622,22 @@
             e.stopPropagation();
             if (activeTab === 'records') openDrawer();
             else switchTab('records');
+        });
+
+        document.getElementById('drawerSyncNowBtn').addEventListener('click', async () => {
+            closeDrawer();
+            if (!isCloudSyncEnabled()) {
+                showToast('Cloud sync not configured yet (local storage active)');
+                return;
+            }
+            try {
+                await pullAndMergeCloudWorkspace(currentUserEmail);
+                await pushCloudUserRow(currentUserEmail, usersDb[currentUserEmail], records, events, settings);
+                renderAll();
+                showToast('Synced with cloud across devices!');
+            } catch (err) {
+                showToast('Sync error: ' + err.message);
+            }
         });
 
         document.getElementById('drawerBackdrop').addEventListener('click', closeDrawer);

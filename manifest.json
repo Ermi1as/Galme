@@ -2,7 +2,7 @@
   "id": "./index.html",
   "name": "Galmee Herregaa - Expense & Bookkeeping",
   "short_name": "Galmee",
-  "description": "Multi-user bilingual daily income, expense, budget, analytics, and Ethiopian calendar bookkeeping app with real email OTP verification.",
+  "description": "Multi-user bilingual daily income, expense, budget, analytics, and Ethiopian calendar bookkeeping app with cross-device cloud sync and email OTP verification.",
   "start_url": "./index.html",
   "scope": "./",
   "lang": "en",
