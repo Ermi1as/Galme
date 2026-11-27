@@ -1592,6 +1592,28 @@
                     <div class="settings-val"><span id="pinStatusLabel">Off</span> &rsaquo;</div>
                 </div>
             </div>
+
+            <div class="settings-group">
+                <div class="settings-group-label">SUPPORT TEAM</div>
+                <div class="settings-row" id="supportDmRow">
+                    <div class="settings-left">
+                        <div class="settings-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <span class="settings-name">Direct Message Center</span>
+                    </div>
+                    <div class="settings-val">&rsaquo;</div>
+                </div>
+                <div class="settings-row" id="supportEmailRow">
+                    <div class="settings-left">
+                        <div class="settings-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        </div>
+                        <span class="settings-name">Email Support</span>
+                    </div>
+                    <div class="settings-val">&rsaquo;</div>
+                </div>
+            </div>
         </section>
 
         <!-- FLOATING ACTION BUTTON -->
@@ -3696,6 +3718,22 @@
                 if (reg && reg.active) reg.active.postMessage({ type: 'WIDGET_REFRESH' });
             } catch (_) {}
         }
+
+        // ---- Support team (1: direct message center, 2: email) ----
+        const SUPPORT_DM_URL = '';   // e.g. 'https://t.me/your_username'
+        const SUPPORT_EMAIL = '';    // e.g. 'support@example.com'
+
+        document.getElementById('supportDmRow').addEventListener('click', () => {
+            if (!SUPPORT_DM_URL) { showToast('Direct message center is not set up yet.'); return; }
+            window.open(SUPPORT_DM_URL, '_blank', 'noopener');
+        });
+
+        document.getElementById('supportEmailRow').addEventListener('click', () => {
+            if (!SUPPORT_EMAIL) { showToast('Support email is not set up yet.'); return; }
+            const subject = encodeURIComponent('Bookkeeping Ledger Support');
+            const body = encodeURIComponent('Account: ' + (currentUserEmail || '') + '\n\nHow can we help?\n');
+            window.location.href = 'mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body;
+        });
 
         // ---- Push notifications ----
         function urlB64ToUint8Array(b64) {
