@@ -1202,6 +1202,16 @@
             right: auto;
             left: max(18px, calc(50vw - 222px));
         }
+    
+        /* PIN setup modal */
+        .pin-seg { display: flex; gap: 8px; margin-bottom: 13px; }
+        .pin-seg button {
+            flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+            background: var(--bg); color: var(--text); font-weight: 700; font-size: 0.9rem; cursor: pointer;
+        }
+        .pin-seg button.active { background: var(--header-bg); color: #ffffff; border-color: transparent; }
+        #pinModalBody .form-field input { letter-spacing: 6px; text-align: center; }
+        .pin-error { color: #dc2626; font-size: 0.82rem; min-height: 18px; margin: 2px 0 6px; }
     </style>
 </head>
 <body>
@@ -1725,6 +1735,16 @@
                 </div>
                 <button type="submit" class="submit-btn">Save Record</button>
             </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="pinModal">
+        <div class="modal-sheet">
+            <div class="modal-head">
+                <h3 id="pinModalTitle">PIN Lock</h3>
+                <button class="close-modal" id="closePinModal">&times;</button>
+            </div>
+            <div id="pinModalBody"></div>
         </div>
     </div>
 
@@ -2684,7 +2704,7 @@
             document.body.classList.toggle('night-mode', settings.nightMode);
             settings.biometric = false;
             settings.biometricCredId = '';
-            document.getElementById('pinStatusLabel').textContent = settings.pin ? 'Active' : 'Off';
+            refreshPinStatus();
 
             document.getElementById('authWrapper').classList.remove('active');
             document.getElementById('mainAppShell').classList.add('active');
@@ -3513,32 +3533,125 @@
             const pinInput = document.getElementById('pinUnlockInput');
             const pinBtn = document.getElementById('pinUnlockBtn');
             const hint = document.getElementById('lockScreenHint');
-            if (pinInput) pinInput.style.display = 'block';
+            const len = settings.pin ? settings.pin.length : 4;
+            if (pinInput) {
+                pinInput.style.display = 'block';
+                pinInput.maxLength = len;
+                pinInput.placeholder = '\u2022'.repeat(len);
+            }
             if (pinBtn) pinBtn.style.display = settings.pin ? 'inline-flex' : 'none';
-            if (hint) hint.textContent = 'Enter your 4-digit PIN to unlock';
+            if (hint) hint.textContent = 'Enter your ' + len + '-digit PIN to unlock';
+        }
+
+        // ---- PIN Lock setup (4 or 6 digits; changing/turning off requires the current PIN) ----
+        const pinModalEl = document.getElementById('pinModal');
+        const pinBodyEl = document.getElementById('pinModalBody');
+
+        function closePinModal() { pinModalEl.classList.remove('open'); pinBodyEl.innerHTML = ''; }
+        function pinDigitsOnly(input) { input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); }); }
+        function setPinError(msg) { const el = document.getElementById('pinErr'); if (el) el.textContent = msg || ''; }
+        function refreshPinStatus() {
+            document.getElementById('pinStatusLabel').textContent = settings.pin ? ('Active (' + settings.pin.length + ')') : 'Off';
+        }
+
+        function showPinMenu() {
+            document.getElementById('pinModalTitle').textContent = 'PIN Lock';
+            pinBodyEl.innerHTML = `
+                <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:10px;">PIN Lock is on (${settings.pin.length} digits).</p>
+                <button class="submit-btn" id="pinChangeBtn" type="button">Change PIN</button>
+                <button class="secondary-btn" id="pinOffBtn" type="button" style="color:#dc2626;">Turn off PIN</button>
+                <button class="secondary-btn" id="pinCancelBtn" type="button">Cancel</button>`;
+            document.getElementById('pinChangeBtn').onclick = () => showPinSet(true);
+            document.getElementById('pinOffBtn').onclick = showPinOff;
+            document.getElementById('pinCancelBtn').onclick = closePinModal;
+        }
+
+        function showPinSet(changing) {
+            let len = changing && settings.pin ? settings.pin.length : 4;
+            document.getElementById('pinModalTitle').textContent = changing ? 'Change PIN' : 'Set up PIN Lock';
+            pinBodyEl.innerHTML = `
+                ${changing ? '<div class="form-field"><label>Current PIN</label><input type="password" id="pinCur" inputmode="numeric" autocomplete="off"></div>' : ''}
+                <div class="form-field"><label>PIN length</label></div>
+                <div class="pin-seg" id="pinSeg">
+                    <button type="button" data-len="4">4 digits</button>
+                    <button type="button" data-len="6">6 digits</button>
+                </div>
+                <div class="form-field"><label>New PIN</label><input type="password" id="pinNew" inputmode="numeric" autocomplete="off"></div>
+                <div class="form-field"><label>Confirm PIN</label><input type="password" id="pinConf" inputmode="numeric" autocomplete="off"></div>
+                <div class="pin-error" id="pinErr"></div>
+                <button class="submit-btn" id="pinSaveBtn" type="button">Save PIN</button>
+                <button class="secondary-btn" id="pinCancelBtn" type="button">Cancel</button>`;
+            const newEl = document.getElementById('pinNew');
+            const confEl = document.getElementById('pinConf');
+            const curEl = document.getElementById('pinCur');
+            [newEl, confEl, curEl].forEach(el => { if (el) pinDigitsOnly(el); });
+            if (curEl) curEl.maxLength = settings.pin.length;
+            function applyLen() {
+                newEl.maxLength = len; confEl.maxLength = len;
+                newEl.value = ''; confEl.value = '';
+                document.querySelectorAll('#pinSeg button').forEach(b => b.classList.toggle('active', Number(b.dataset.len) === len));
+            }
+            document.querySelectorAll('#pinSeg button').forEach(b => b.onclick = () => { len = Number(b.dataset.len); applyLen(); setPinError(''); });
+            applyLen();
+            document.getElementById('pinCancelBtn').onclick = closePinModal;
+            document.getElementById('pinSaveBtn').onclick = () => {
+                if (changing && (!curEl.value || curEl.value !== settings.pin)) { setPinError('Current PIN is incorrect.'); return; }
+                const v = newEl.value;
+                if (!new RegExp('^\\d{' + len + '}$').test(v)) { setPinError('Enter exactly ' + len + ' digits.'); return; }
+                if (v !== confEl.value) { setPinError('PINs do not match.'); return; }
+                settings.pin = v;
+                saveUserState();
+                refreshPinStatus();
+                updateLockScreenUI();
+                closePinModal();
+                showToast('PIN Lock saved');
+            };
+            setTimeout(() => (curEl || newEl).focus(), 50);
+        }
+
+        function showPinOff() {
+            document.getElementById('pinModalTitle').textContent = 'Turn off PIN';
+            pinBodyEl.innerHTML = `
+                <div class="form-field"><label>Enter your current PIN to turn it off</label><input type="password" id="pinCur" inputmode="numeric" autocomplete="off" maxlength="${settings.pin.length}"></div>
+                <div class="pin-error" id="pinErr"></div>
+                <button class="submit-btn" id="pinOffConfirm" type="button" style="background:#dc2626;">Turn off PIN</button>
+                <button class="secondary-btn" id="pinCancelBtn" type="button">Cancel</button>`;
+            const curEl = document.getElementById('pinCur');
+            pinDigitsOnly(curEl);
+            document.getElementById('pinCancelBtn').onclick = closePinModal;
+            document.getElementById('pinOffConfirm').onclick = () => {
+                if (curEl.value !== settings.pin) { setPinError('Incorrect PIN.'); curEl.value = ''; return; }
+                settings.pin = '';
+                saveUserState();
+                refreshPinStatus();
+                updateLockScreenUI();
+                closePinModal();
+                showToast('PIN Lock turned off');
+            };
+            setTimeout(() => curEl.focus(), 50);
         }
 
         document.getElementById('setupPinRow').addEventListener('click', () => {
-            const newPin = prompt('Enter a 4-digit PIN (leave blank to disable):');
-            if (newPin === null) return;
-            if (/^\d{4}$/.test(newPin.trim())) {
-                settings.pin = newPin.trim();
-                document.getElementById('pinStatusLabel').textContent = 'Active';
-                showToast('PIN Lock saved');
-            } else {
-                settings.pin = '';
-                document.getElementById('pinStatusLabel').textContent = 'Off';
-                showToast('PIN Lock disabled');
-            }
-            saveUserState();
+            pinModalEl.classList.add('open');
+            if (settings.pin) showPinMenu(); else showPinSet(false);
         });
+        document.getElementById('closePinModal').addEventListener('click', closePinModal);
+        pinModalEl.addEventListener('click', (e) => { if (e.target === pinModalEl) closePinModal(); });
 
-        document.getElementById('pinUnlockBtn').addEventListener('click', () => {
-            if (document.getElementById('pinUnlockInput').value === settings.pin) {
+        function tryUnlock() {
+            const input = document.getElementById('pinUnlockInput');
+            if (settings.pin && input.value === settings.pin) {
                 document.getElementById('pinOverlay').classList.remove('open');
+                input.value = '';
             } else {
+                input.value = '';
                 showToast('Incorrect PIN');
             }
+        }
+        document.getElementById('pinUnlockBtn').addEventListener('click', tryUnlock);
+        document.getElementById('pinUnlockInput').addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            if (settings.pin && e.target.value.length === settings.pin.length) tryUnlock();
         });
 
 
