@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Bookkeeping Ledger — Multi-User Expense & Bookkeeping</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/png" href="./icon-192.png">
@@ -1277,7 +1277,7 @@
                 <div class="form-field">
                     <label for="newPasswordInput">New Password</label>
                     <div class="password-wrapper">
-                        <input type="password" id="newPasswordInput" required minlength="4" placeholder="Enter new password">
+                        <input type="password" id="newPasswordInput" required minlength="6" placeholder="Enter new password">
                         <button type="button" class="toggle-pass-btn" id="toggleNewPassBtn" aria-label="Show or hide new password">
                             <svg id="newPassEyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
@@ -1286,7 +1286,7 @@
                 <div class="form-field">
                     <label for="confirmNewPasswordInput">Confirm New Password</label>
                     <div class="password-wrapper">
-                        <input type="password" id="confirmNewPasswordInput" required minlength="4" placeholder="Confirm new password">
+                        <input type="password" id="confirmNewPasswordInput" required minlength="6" placeholder="Confirm new password">
                         <button type="button" class="toggle-pass-btn" id="toggleConfirmPassBtn" aria-label="Show or hide confirm password">
                             <svg id="confirmPassEyeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
@@ -2005,9 +2005,10 @@
 
             if (remoteRow.user_profile && typeof remoteRow.user_profile === 'object') {
                 const localUser = usersDb[normEmail] || {};
-                usersDb[normEmail] = Object.assign({}, remoteRow.user_profile, {
-                    password: localUser.password || remoteRow.user_profile.password || ''
-                });
+                const merged = Object.assign({}, remoteRow.user_profile);
+                const credSource = (localUser.pwHash || localUser.password) ? localUser : remoteRow.user_profile;
+                ['pwHash', 'pwSalt', 'password'].forEach(k => { if (credSource[k]) merged[k] = credSource[k]; else delete merged[k]; });
+                usersDb[normEmail] = merged;
                 try { localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb)); } catch (_) {}
             }
 
@@ -2088,6 +2089,55 @@
         function userRecordsKey(email) { return `galmee_records_${email.toLowerCase()}`; }
         function userEventsKey(email) { return `galmee_events_${email.toLowerCase()}`; }
         function userSettingsKey(email) { return `galmee_settings_${email.toLowerCase()}`; }
+
+        // ==========================================
+        // SECURITY HELPERS (password hashing, secure OTP)
+        // ==========================================
+        function randomBytesB64(n) {
+            const a = new Uint8Array(n);
+            crypto.getRandomValues(a);
+            let b = '';
+            a.forEach(x => b += String.fromCharCode(x));
+            return btoa(b);
+        }
+
+        async function derivePasswordHash(password, saltB64) {
+            const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+            const keyMat = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+            const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, keyMat, 256);
+            let b = '';
+            new Uint8Array(bits).forEach(x => b += String.fromCharCode(x));
+            return btoa(b);
+        }
+
+        // Stores only a salted hash; removes any legacy plaintext password.
+        async function setUserPassword(userObj, password) {
+            const salt = randomBytesB64(16);
+            userObj.pwSalt = salt;
+            userObj.pwHash = await derivePasswordHash(password, salt);
+            delete userObj.password;
+            return userObj;
+        }
+
+        // Returns true / false, or null when the account has no stored credential.
+        async function checkUserPassword(userObj, password) {
+            if (userObj.pwHash && userObj.pwSalt) {
+                return (await derivePasswordHash(password, userObj.pwSalt)) === userObj.pwHash;
+            }
+            if (userObj.password) return userObj.password === password; // legacy plaintext, upgraded on login
+            return null;
+        }
+
+        function generateOtp() {
+            const a = new Uint32Array(1);
+            crypto.getRandomValues(a);
+            return String(100000 + (a[0] % 900000));
+        }
+
+        let otpAttempts = 0;
+        let resetOtpAttempts = 0;
+        const MAX_OTP_ATTEMPTS = 5;
+        const MIN_PASSWORD_LENGTH = 6;
 
         function showToast(msg) {
             const t = document.getElementById('toast');
@@ -2199,24 +2249,23 @@
                         } catch (_) {}
                     }
 
-                    if (existingUser) {
-                        if (existingUser.password && existingUser.password !== password) {
-                            showToast('Invalid email or password.');
-                            return;
-                        }
-                        currentUserEmail = email;
-                        try { localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail); } catch (_) {}
-                        await loadUserWorkspace(currentUserEmail);
+                    if (!existingUser) {
+                        showToast('No account found for this email. Please create an account.');
                         return;
                     }
-
-                    usersDb[email] = {
-                        name: email.split('@')[0],
-                        password: password,
-                        verified: true,
-                        createdAt: new Date().toISOString()
-                    };
-                    try { localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb)); } catch (_) {}
+                    const passOk = await checkUserPassword(existingUser, password);
+                    if (passOk === null) {
+                        showToast('This account has no password set. Use "Forgot password" to set one.');
+                        return;
+                    }
+                    if (!passOk) {
+                        showToast('Invalid email or password.');
+                        return;
+                    }
+                    if (!existingUser.pwHash) {
+                        await setUserPassword(existingUser, password); // upgrade legacy plaintext
+                        try { localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb)); } catch (_) {}
+                    }
                     currentUserEmail = email;
                     try { localStorage.setItem(ACTIVE_USER_KEY, currentUserEmail); } catch (_) {}
                     await loadUserWorkspace(currentUserEmail);
@@ -2238,6 +2287,10 @@
                 showToast('This email is already registered. Please switch to Sign In.');
                 return;
             }
+            if (password.length < MIN_PASSWORD_LENGTH) {
+                showToast('Password must be at least ' + MIN_PASSWORD_LENGTH + ' characters.');
+                return;
+            }
 
             pendingAuthUser = { email, name: fullName, password, isNew: true };
 
@@ -2246,7 +2299,8 @@
             btn.innerHTML = '<span>Sending verification code...</span>';
 
             try {
-                activeOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+                activeOtpCode = generateOtp();
+                otpAttempts = 0;
                 otpExpiresAt = Date.now() + 10 * 60 * 1000;
                 await dispatchRealEmailOtp(pendingAuthUser.email, pendingAuthUser.name, activeOtpCode);
 
@@ -2272,7 +2326,8 @@
             btn.disabled = true;
             btn.textContent = 'Resending...';
             try {
-                activeOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+                activeOtpCode = generateOtp();
+                otpAttempts = 0;
                 otpExpiresAt = Date.now() + 10 * 60 * 1000;
                 await dispatchRealEmailOtp(pendingAuthUser.email, pendingAuthUser.name, activeOtpCode);
                 showToast('New code sent to ' + pendingAuthUser.email);
@@ -2292,7 +2347,7 @@
         });
 
         // Step 2 Submit: Verify Email Code & Finalize Account Creation
-        document.getElementById('verifyOtpForm').addEventListener('submit', (e) => {
+        document.getElementById('verifyOtpForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const entered = document.getElementById('emailOtpInput').value.trim();
 
@@ -2305,16 +2360,21 @@
                 return;
             }
             if (entered !== activeOtpCode) {
-                showToast('Incorrect verification code. Check your email and try again.');
+                otpAttempts++;
+                if (otpAttempts >= MAX_OTP_ATTEMPTS) {
+                    activeOtpCode = '';
+                    showToast('Too many incorrect attempts. Please request a new code.');
+                } else {
+                    showToast('Incorrect verification code. Check your email and try again.');
+                }
                 return;
             }
 
-            usersDb[pendingAuthUser.email] = {
+            usersDb[pendingAuthUser.email] = await setUserPassword({
                 name: pendingAuthUser.name,
-                password: pendingAuthUser.password,
                 verified: true,
                 createdAt: new Date().toISOString()
-            };
+            }, pendingAuthUser.password);
             localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
 
             currentUserEmail = pendingAuthUser.email;
@@ -2361,7 +2421,8 @@
 
         async function sendPasswordResetOtp(targetEmail) {
             const knownName = (usersDb[targetEmail] && usersDb[targetEmail].name) || targetEmail.split('@')[0];
-            resetOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            resetOtpCode = generateOtp();
+            resetOtpAttempts = 0;
             resetOtpExpiresAt = Date.now() + 10 * 60 * 1000;
             await dispatchRealEmailOtp(targetEmail, knownName, resetOtpCode);
         }
@@ -2414,7 +2475,7 @@
             }
         });
 
-        document.getElementById('resetPasswordForm').addEventListener('submit', (e) => {
+        document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const enteredCode = document.getElementById('resetOtpInput').value.trim();
             const newPass = document.getElementById('newPasswordInput').value.trim();
@@ -2429,11 +2490,17 @@
                 return;
             }
             if (enteredCode !== resetOtpCode) {
-                showToast('Incorrect 6-digit code. Check your email and try again.');
+                resetOtpAttempts++;
+                if (resetOtpAttempts >= MAX_OTP_ATTEMPTS) {
+                    resetOtpCode = '';
+                    showToast('Too many incorrect attempts. Please request a new code.');
+                } else {
+                    showToast('Incorrect 6-digit code. Check your email and try again.');
+                }
                 return;
             }
-            if (newPass.length < 4) {
-                showToast('Password must be at least 4 characters.');
+            if (newPass.length < MIN_PASSWORD_LENGTH) {
+                showToast('Password must be at least ' + MIN_PASSWORD_LENGTH + ' characters.');
                 return;
             }
             if (newPass !== confirmPass) {
@@ -2444,14 +2511,12 @@
             if (!usersDb[resetTargetEmail]) {
                 usersDb[resetTargetEmail] = {
                     name: resetTargetEmail.split('@')[0],
-                    password: newPass,
                     verified: true,
                     createdAt: new Date().toISOString()
                 };
-            } else {
-                usersDb[resetTargetEmail].password = newPass;
-                usersDb[resetTargetEmail].verified = true;
             }
+            await setUserPassword(usersDb[resetTargetEmail], newPass);
+            usersDb[resetTargetEmail].verified = true;
             localStorage.setItem(USERS_DB_KEY, JSON.stringify(usersDb));
 
             const restoredEmail = resetTargetEmail;
@@ -2563,7 +2628,8 @@
             }
 
             applyTranslations();
-            switchTab('records');
+            const hashTab = (location.hash || '').slice(1);
+            switchTab(['records', 'report', 'budget', 'events', 'settings'].includes(hashTab) ? hashTab : 'records');
             if (initialCloudSynced) {
                 showToast('Account synced');
             }

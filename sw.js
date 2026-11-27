@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bookkeeping-ledger-v50';
+const CACHE_NAME = 'bookkeeping-ledger-v51';
 const ASSETS = [
   './',
   './index.html',
@@ -23,20 +23,37 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  const url = event.request.url;
-  if (url.includes('api.emailjs.com') || url.includes('supabase.co')) return;
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((res) => {
-        if (!res || res.status !== 200 || res.type !== 'basic') return res;
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.hostname.endsWith('supabase.co') || url.hostname === 'api.emailjs.com') return;
+  if (url.origin !== self.location.origin) return;
+
+  // Pages: network-first so users always get the latest app, cached copy when offline.
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req).then((res) => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', clone));
+        }
         return res;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') return caches.match('./index.html');
-      });
+      }).catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // Static assets: cache-first, refreshed in the background.
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const network = fetch(req).then((res) => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || network;
     })
   );
 });
