@@ -739,7 +739,8 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .settings-row:last-child {
+        .settings-row:last-child,
+        .settings-row:last-of-type {
             border-bottom: none;
             padding-bottom: 2px;
         }
@@ -1603,6 +1604,24 @@
                         <span class="settings-name">Email Support</span>
                     </div>
                     <div class="settings-val">&rsaquo;</div>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-label">ABOUT</div>
+                <div style="padding: 6px 4px 10px; font-size: 0.86rem; line-height: 1.55; color: var(--text);">
+                    <div style="font-weight: 800; font-size: 1rem; color: var(--header-bg); margin-bottom: 4px;">Bookkeeping Ledger (Galmee)</div>
+                    <p style="color: var(--text-muted); margin-bottom: 10px;">
+                        A simple, secure bookkeeping app for personal and small-business use. Record daily income and expenses,
+                        track budgets and events, and understand your spending with clear weekly, monthly and yearly reports.
+                    </p>
+                    <ul style="color: var(--text-muted); padding-left: 18px; margin-bottom: 10px;">
+                        <li>Works offline and syncs across your devices</li>
+                        <li>Ethiopian and Gregorian calendars, ETB / USD / EUR</li>
+                        <li>CSV backup and restore, night mode</li>
+                        <li>PIN and fingerprint lock to protect your data</li>
+                    </ul>
+                    <div style="color: var(--text-muted); font-size: 0.78rem;">Version 1.0 &middot; Developed by Jemmy Digital Hub</div>
                 </div>
             </div>
         </section>
@@ -2657,6 +2676,10 @@
             document.getElementById('ethCalToggle').checked = settings.ethCal;
             document.getElementById('nightModeToggle').checked = settings.nightMode;
             document.body.classList.toggle('night-mode', settings.nightMode);
+            if (settings.biometric && (!settings.biometricCredId || String(settings.biometricCredId).startsWith('device-bio-'))) {
+                settings.biometric = false;
+                settings.biometricCredId = '';
+            }
             document.getElementById('biometricToggle').checked = settings.biometric;
             document.getElementById('pinStatusLabel').textContent = settings.pin ? 'Active' : 'Off';
 
@@ -3400,11 +3423,11 @@
 
         async function registerDeviceBiometric(email) {
             if (!isWebAuthnBiometricAvailable()) {
-                return { credId: 'device-bio-' + Date.now(), native: false };
+                throw Object.assign(new Error('unsupported'), { name: 'NotSupportedError' });
             }
             const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
             if (!available) {
-                return { credId: 'device-bio-' + Date.now(), native: false };
+                throw Object.assign(new Error('unsupported'), { name: 'NotSupportedError' });
             }
 
             const challenge = new Uint8Array(32);
@@ -3460,7 +3483,7 @@
                     return Boolean(assertion);
                 }
             }
-            return Boolean(settings.biometric);
+            return false; // legacy "device-bio-" locks cannot verify a fingerprint; PIN is required
         }
 
         function updateLockScreenUI() {
@@ -3512,7 +3535,11 @@
                 settings.biometricCredId = '';
                 saveUserState();
                 updateLockScreenUI();
-                showToast('Fingerprint setup cancelled');
+                const n = err && err.name;
+                if (n === 'NotAllowedError' || n === 'AbortError') showToast('Fingerprint setup cancelled or timed out');
+                else if (n === 'SecurityError') showToast('Fingerprint needs a secure (https) website');
+                else if (n === 'NotSupportedError') showToast('Fingerprint is not available here. Use PIN Lock instead.');
+                else showToast('Fingerprint setup failed. Use PIN Lock instead.');
             }
         });
 
@@ -3777,7 +3804,7 @@
             const t = document.getElementById('pushToggle');
             if (!t) return;
             const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-            document.getElementById('pushRow').style.display = supported ? '' : 'none';
+            if (!supported) { const row = document.getElementById('pushRow'); if (row) row.remove(); return; }
             t.checked = supported && Boolean(settings.pushEnabled) && Notification.permission === 'granted';
         }
 
