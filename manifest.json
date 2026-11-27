@@ -1,6 +1,6 @@
 {
   "id": "./index.html",
-  "name": "Galmee Herregaa - Expense & Bookkeeping",
+  "name": "Bookkeeping Ledger - Expense & Bookkeeping",
   "short_name": "Galmee",
   "description": "Multi-user bilingual daily income, expense, budget, analytics, and Ethiopian calendar bookkeeping app with cross-device cloud sync and email OTP verification.",
   "start_url": "./index.html",
@@ -53,14 +53,14 @@
       "sizes": "540x720",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Galmee Herregaa Records & Balance View"
+      "label": "Bookkeeping Ledger Records & Balance View"
     },
     {
       "src": "./screenshot-wide.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Galmee Herregaa Desktop & Tablet View"
+      "label": "Bookkeeping Ledger Desktop & Tablet View"
     }
   ],
   "prefer_related_applications": false,
