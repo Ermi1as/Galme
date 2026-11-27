@@ -1789,7 +1789,7 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v49';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v50';
         const DEFAULT_CLOUD_CFG = {
             url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
@@ -2026,7 +2026,7 @@
             } catch (_) {}
 
             if (remoteRow.settings && typeof remoteRow.settings === 'object' && !hasPendingCloudSync(normEmail)) {
-                settings = Object.assign({}, settings, remoteRow.settings);
+                settings = Object.assign({}, settings, remoteRow.settings, { lang: 'en' });
                 try { localStorage.setItem(userSettingsKey(normEmail), JSON.stringify(settings)); } catch (_) {}
             }
 
@@ -2520,15 +2520,14 @@
 
             records = JSON.parse(localStorage.getItem(userRecordsKey(normEmail))) || [];
             events = JSON.parse(localStorage.getItem(userEventsKey(normEmail))) || [];
-            settings = Object.assign({}, JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {}, { lang: 'en' });
-            if (false) {
+            settings = Object.assign({
                 lang: 'en',
                 currency: 'ETB',
                 ethCal: true,
                 nightMode: false,
                 biometric: false,
                 pin: ''
-            };
+            }, JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {}, { lang: 'en' });
 
             let initialCloudSynced = false;
             if (isCloudSyncEnabled()) {
