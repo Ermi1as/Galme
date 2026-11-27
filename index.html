@@ -1577,19 +1577,6 @@
 
             <div class="settings-group">
                 <div class="settings-group-label" data-i18n="security">SECURITY</div>
-                <div class="settings-row">
-                    <div class="settings-left">
-                        <div class="settings-icon">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/></svg>
-                        </div>
-                        <span class="settings-name" data-i18n="fingerprintLock">Enable Fingerprint Lock</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="biometricToggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div id="bioUnsupportedNote" style="display:none; font-size:12px; color:#64748b; padding:0 16px 12px 58px;">Fingerprint isn't supported in this app or browser. Use PIN Lock instead.</div>
                 <div class="settings-row" id="setupPinRow">
                     <div class="settings-left">
                         <div class="settings-icon">
@@ -1626,7 +1613,7 @@
                         <li>Works offline and syncs across your devices</li>
                         <li>Ethiopian and Gregorian calendars, ETB / USD / EUR</li>
                         <li>CSV backup and restore, night mode</li>
-                        <li>PIN and fingerprint lock to protect your data</li>
+                        <li>PIN lock to protect your data</li>
                     </ul>
                     <div style="color: var(--text-muted); font-size: 0.78rem;">Version 1.0 &middot; Developed by Jemmy Digital Hub</div>
                 </div>
@@ -1806,10 +1793,9 @@
     <!-- PIN LOCK OVERLAY -->
     <div class="pin-overlay" id="pinOverlay">
         <h2>Bookkeeping Ledger</h2>
-        <p id="lockScreenHint" style="color:#94a3b8; margin-top:6px;">Enter your 4-digit PIN or use fingerprint to unlock</p>
+        <p id="lockScreenHint" style="color:#94a3b8; margin-top:6px;">Enter your 4-digit PIN to unlock</p>
         <input type="password" id="pinUnlockInput" class="pin-input" maxlength="4" inputmode="numeric" placeholder="••••">
         <button class="submit-btn" style="width:200px;" id="pinUnlockBtn">Unlock with PIN</button>
-        <button class="secondary-btn" style="width:200px; display:none; background:rgba(255,255,255,0.16); color:#ffffff;" id="bioUnlockBtn">Unlock with Fingerprint</button>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -2696,18 +2682,15 @@
             document.getElementById('ethCalToggle').checked = settings.ethCal;
             document.getElementById('nightModeToggle').checked = settings.nightMode;
             document.body.classList.toggle('night-mode', settings.nightMode);
-            if (settings.biometric && (!settings.biometricCredId || String(settings.biometricCredId).startsWith('device-bio-'))) {
-                settings.biometric = false;
-                settings.biometricCredId = '';
-            }
-            document.getElementById('biometricToggle').checked = settings.biometric;
+            settings.biometric = false;
+            settings.biometricCredId = '';
             document.getElementById('pinStatusLabel').textContent = settings.pin ? 'Active' : 'Off';
 
             document.getElementById('authWrapper').classList.remove('active');
             document.getElementById('mainAppShell').classList.add('active');
 
             updateLockScreenUI();
-            if (settings.pin || settings.biometric) {
+            if (settings.pin) {
                 document.getElementById('pinOverlay').classList.add('open');
             }
 
@@ -3526,187 +3509,14 @@
             reader.readAsText(file);
         });
 
-        function isWebAuthnBiometricAvailable() {
-            return Boolean(
-                window.PublicKeyCredential &&
-                typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
-                window.isSecureContext
-            );
-        }
-
-        function bytesToB64(arrBuf) {
-            const bytes = new Uint8Array(arrBuf);
-            let s = '';
-            for (let i = 0; i < bytes.byteLength; i++) s += String.fromCharCode(bytes[i]);
-            return btoa(s);
-        }
-
-        function b64ToBytes(b64) {
-            const bin = atob(b64);
-            const out = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-            return out.buffer;
-        }
-
-        async function registerDeviceBiometric(email) {
-            if (!isWebAuthnBiometricAvailable()) {
-                throw Object.assign(new Error('unsupported'), { name: 'NotSupportedError' });
-            }
-            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-            if (!available) {
-                throw Object.assign(new Error('unsupported'), { name: 'NotSupportedError' });
-            }
-
-            const challenge = new Uint8Array(32);
-            window.crypto.getRandomValues(challenge);
-            const userId = new Uint8Array(16);
-            window.crypto.getRandomValues(userId);
-
-            const cred = await navigator.credentials.create({
-                publicKey: {
-                    challenge: challenge,
-                    rp: { name: 'Bookkeeping Ledger' },
-                    user: {
-                        id: userId,
-                        name: email,
-                        displayName: (usersDb[email] && usersDb[email].name) || email
-                    },
-                    pubKeyCredParams: [
-                        { type: 'public-key', alg: -7 },
-                        { type: 'public-key', alg: -257 }
-                    ],
-                    authenticatorSelection: {
-                        authenticatorAttachment: 'platform',
-                        userVerification: 'required'
-                    },
-                    timeout: 60000
-                }
-            });
-
-            return {
-                credId: cred && cred.rawId ? bytesToB64(cred.rawId) : ('webauthn-' + Date.now()),
-                native: true
-            };
-        }
-
-        async function verifyDeviceBiometric() {
-            if (isWebAuthnBiometricAvailable() && settings.biometricCredId && !settings.biometricCredId.startsWith('device-bio-')) {
-                const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-                if (available) {
-                    const challenge = new Uint8Array(32);
-                    window.crypto.getRandomValues(challenge);
-                    const assertion = await navigator.credentials.get({
-                        publicKey: {
-                            challenge: challenge,
-                            allowCredentials: [{
-                                type: 'public-key',
-                                id: b64ToBytes(settings.biometricCredId)
-                            }],
-                            userVerification: 'required',
-                            timeout: 60000
-                        }
-                    });
-                    return Boolean(assertion);
-                }
-            }
-            return false; // legacy "device-bio-" locks cannot verify a fingerprint; PIN is required
-        }
-
         function updateLockScreenUI() {
-            const bioBtn = document.getElementById('bioUnlockBtn');
             const pinInput = document.getElementById('pinUnlockInput');
             const pinBtn = document.getElementById('pinUnlockBtn');
             const hint = document.getElementById('lockScreenHint');
-
-            if (bioBtn) {
-                bioBtn.style.display = settings.biometric ? 'inline-flex' : 'none';
-            }
-
-            if (settings.biometric && !settings.pin) {
-                if (pinInput) pinInput.style.display = 'none';
-                if (pinBtn) pinBtn.style.display = 'none';
-                if (hint) hint.textContent = 'Tap below to verify with your fingerprint';
-            } else {
-                if (pinInput) pinInput.style.display = 'block';
-                if (pinBtn) pinBtn.style.display = settings.pin ? 'inline-flex' : 'none';
-                if (hint) hint.textContent = settings.biometric
-                    ? 'Use your fingerprint or enter your 4-digit PIN'
-                    : 'Enter your 4-digit PIN to unlock';
-            }
+            if (pinInput) pinInput.style.display = 'block';
+            if (pinBtn) pinBtn.style.display = settings.pin ? 'inline-flex' : 'none';
+            if (hint) hint.textContent = 'Enter your 4-digit PIN to unlock';
         }
-
-        async function refreshBiometricSupportUI() {
-            const toggle = document.getElementById('biometricToggle');
-            const note = document.getElementById('bioUnsupportedNote');
-            let ok = false;
-            try {
-                ok = isWebAuthnBiometricAvailable() && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-            } catch (_) { ok = false; }
-            if (!ok) {
-                toggle.checked = false;
-                toggle.disabled = true;
-                if (settings.biometric) {
-                    settings.biometric = false;
-                    settings.biometricCredId = '';
-                    saveUserState();
-                    updateLockScreenUI();
-                }
-            } else {
-                toggle.disabled = false;
-            }
-            if (note) note.style.display = ok ? 'none' : 'block';
-        }
-        refreshBiometricSupportUI();
-
-        document.getElementById('biometricToggle').addEventListener('change', async (e) => {
-            const toggle = e.target;
-            if (!toggle.checked) {
-                settings.biometric = false;
-                settings.biometricCredId = '';
-                saveUserState();
-                updateLockScreenUI();
-                showToast('Fingerprint lock disabled');
-                return;
-            }
-
-            try {
-                const info = await registerDeviceBiometric(currentUserEmail);
-                settings.biometric = true;
-                settings.biometricCredId = info.credId;
-                saveUserState();
-                updateLockScreenUI();
-                showToast(info.native
-                    ? 'Fingerprint registered & lock enabled!'
-                    : 'Fingerprint lock enabled on this device!');
-            } catch (err) {
-                toggle.checked = false;
-                settings.biometric = false;
-                settings.biometricCredId = '';
-                saveUserState();
-                updateLockScreenUI();
-                const n = err && err.name;
-                if (n === 'NotAllowedError' || n === 'AbortError') showToast('Fingerprint setup cancelled or timed out');
-                else if (n === 'SecurityError') showToast('Fingerprint needs a secure (https) website');
-                else if (n === 'NotSupportedError') showToast('Fingerprint is not available here. Use PIN Lock instead.');
-                else if (n === 'ConstraintError' || n === 'InvalidStateError') showToast('Set a phone screen lock and add a fingerprint in device settings first.');
-                else { console.error('Biometric setup error:', err); showToast('Fingerprint setup failed (' + (n || 'Error') + '). Use PIN Lock instead.'); }
-            }
-        });
-
-        document.getElementById('bioUnlockBtn').addEventListener('click', async () => {
-            try {
-                const verified = await verifyDeviceBiometric();
-                if (verified) {
-                    document.getElementById('pinOverlay').classList.remove('open');
-                    document.getElementById('pinUnlockInput').value = '';
-                    showToast('Unlocked with fingerprint');
-                } else {
-                    showToast('Fingerprint check failed');
-                }
-            } catch (err) {
-                showToast('Fingerprint unlock cancelled');
-            }
-        });
 
         document.getElementById('setupPinRow').addEventListener('click', () => {
             const newPin = prompt('Enter a 4-digit PIN (leave blank to disable):');

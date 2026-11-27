@@ -19,9 +19,7 @@ Cloudflare Pages or your own hosting, at the domain ROOT.
 Check https://yourdomain/sw.js and /manifest.json open in the browser.
 
 ## Android app with working fingerprint
-Build a Trusted Web Activity at pwabuilder.com, then put your SHA-256 and
-package ID into .well-known/assetlinks.json and redeploy.
-Plain "web to APK" WebView wrappers cannot use fingerprint; PIN Lock works there.
+Fingerprint lock was removed; PIN Lock protects the app on every device.
 
 ## After updating files
 Change CACHE_NAME in sw.js (e.g. v55) so users receive the update.
