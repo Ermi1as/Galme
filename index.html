@@ -3753,28 +3753,17 @@
         document.getElementById('supportEmailRow').addEventListener('click', () => {
             const subject = 'Bookkeeping Ledger Support';
             const body = 'Account: ' + (currentUserEmail || '') + '\n\nHow can we help?\n';
-            const mailto = 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-            const gmail = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(SUPPORT_EMAIL) +
-                '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+            const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1' +
+                '&to=' + encodeURIComponent(SUPPORT_EMAIL) +
+                '&su=' + encodeURIComponent(subject) +
+                '&body=' + encodeURIComponent(body);
 
-            // Always put the address on the clipboard as a safety net
+            // Keep the address on the clipboard as a backup
             try { if (navigator.clipboard) navigator.clipboard.writeText(SUPPORT_EMAIL); } catch (_) {}
 
-            // 1) Try the phone's default mail app
-            const link = document.createElement('a');
-            link.href = mailto;
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-
-            // 2) If no mail app took over, open Gmail compose in the browser
-            setTimeout(() => {
-                if (document.visibilityState === 'visible') {
-                    const w = window.open(gmail, '_blank', 'noopener');
-                    showToast(w ? 'Opening Gmail...' : 'Support email copied: ' + SUPPORT_EMAIL);
-                }
-            }, 1200);
+            // Redirect straight to Gmail compose (opens the Gmail app on most phones)
+            const win = window.open(gmailUrl, '_blank', 'noopener');
+            if (!win) window.location.href = gmailUrl;
         });
 
         // ---- Push notifications ----
