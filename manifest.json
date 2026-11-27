@@ -93,6 +93,80 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "Add Record",
+      "short_name": "Add",
+      "description": "Add a new income or expense record",
+      "url": "./index.html?action=new",
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "name": "Bookkeeping Ledger data",
+      "accept": {
+        "text/csv": [
+          ".csv"
+        ],
+        "application/json": [
+          ".json"
+        ]
+      },
+      "launch_type": "single-client"
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+galmee",
+      "url": "./index.html?entry=%s"
+    }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "note_taking": {
+    "new_note_url": "./index.html?action=new"
+  },
+  "widgets": [
+    {
+      "name": "Balance",
+      "short_name": "Balance",
+      "description": "Total balance with income and expense summary",
+      "tag": "galmee-balance",
+      "template": "galmee-balance",
+      "ms_ac_template": "./widgets/balance-template.json",
+      "data": "./widgets/balance-data.json",
+      "type": "application/json",
+      "auth": false,
+      "update": 3600,
+      "icons": [
+        {
+          "src": "./icon-192.png",
+          "sizes": "192x192"
+        }
+      ],
+      "screenshots": [
+        {
+          "src": "./screenshot-mobile.png",
+          "sizes": "540x720",
+          "label": "Balance widget"
+        }
+      ]
     }
   ]
 }
