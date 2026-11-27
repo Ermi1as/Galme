@@ -1789,7 +1789,7 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v46';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v47';
         const DEFAULT_CLOUD_CFG = {
             url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
@@ -2520,7 +2520,8 @@
 
             records = JSON.parse(localStorage.getItem(userRecordsKey(normEmail))) || [];
             events = JSON.parse(localStorage.getItem(userEventsKey(normEmail))) || [];
-            settings = JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {
+            settings = Object.assign({}, JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {}, { lang: 'en' });
+            if (false) {
                 lang: 'en',
                 currency: 'ETB',
                 ethCal: true,
@@ -2614,72 +2615,72 @@
                 nightMode: 'Night Mode'
             },
             om: {
-                navRecords: 'Galmee',
-                navReport: 'Gabaasa',
-                navBudget: 'Baajata',
-                navEvents: 'Taateewwan',
-                navSettings: 'Qindaa’ina',
-                totalBalance: 'Haftee Waliigalaa',
-                income: 'Galii',
-                expense: 'Baasii',
-                expenses: 'Baasiiwwan',
-                recentRecords: 'Galmeewwan Dhihoo',
-                weekly: 'Torbanii',
-                monthly: 'Ji’aa',
-                yearly: 'Waggaa',
-                totalSpent: 'Baasii Waliigalaa',
-                dailyAvg: 'Guyyaatti',
-                spendingByCategory: 'Baasii Akkaataa Ramaddiitiin',
-                expenseDistribution: 'Raabsa Baasii',
-                noEvents: 'Taateen hin argamne. Uumi',
-                settings: 'QINDAA’INA',
-                language: 'Afaan',
-                currency: 'Maallaqa',
-                preferences: 'FILANNOOWWAN',
-                ethiopianCalendar: 'Kaalaandarii Itoophiyaa Fayyadami',
-                dataManagement: 'BULCHIINSA DAATAA',
-                backupCsv: 'Daataa Olkaa’i (.csv)',
-                restoreCsv: 'Daataa Deebisi (.csv)',
-                security: 'NAGEENYA',
-                fingerprintLock: 'Cufaa Qubaatiin Bani',
-                setupPin: 'Koodii PIN Qindeessi',
-                actions: 'GOCHAWWAN',
-                exportRecord: 'Galmee Baasi',
-                nightMode: 'Haala Halkanii'
+                navRecords: 'Records',
+                navReport: 'Report',
+                navBudget: 'Budget',
+                navEvents: 'Events',
+                navSettings: 'Settings',
+                totalBalance: 'Total Balance',
+                income: 'Income',
+                expense: 'Expense',
+                expenses: 'Expenses',
+                recentRecords: 'Recent Records',
+                weekly: 'Weekly',
+                monthly: 'Monthly',
+                yearly: 'Yearly',
+                totalSpent: 'Total Spent',
+                dailyAvg: 'Daily',
+                spendingByCategory: 'Spending by Category',
+                expenseDistribution: 'Expense Distribution',
+                noEvents: 'No events found. Create',
+                settings: 'SETTINGS',
+                language: 'Language',
+                currency: 'Currency',
+                preferences: 'PREFERENCES',
+                ethiopianCalendar: 'Use Ethiopian Calendar',
+                dataManagement: 'DATA MANAGEMENT',
+                backupCsv: 'Backup Data (.csv)',
+                restoreCsv: 'Restore Data (.csv)',
+                security: 'SECURITY',
+                fingerprintLock: 'Enable Fingerprint Lock',
+                setupPin: 'Set up PIN Lock',
+                actions: 'ACTIONS',
+                exportRecord: 'Export Record',
+                nightMode: 'Night Mode'
             },
             am: {
-                navRecords: 'መዝገብ',
-                navReport: 'ሪፖርት',
-                navBudget: 'በጀት',
-                navEvents: 'ሁነቶች',
-                navSettings: 'ቅንብሮች',
-                totalBalance: 'ጠቅላላ ቀሪ ሂሳብ',
-                income: 'ገቢ',
-                expense: 'ወጪ',
-                expenses: 'ወጪዎች',
-                recentRecords: 'የቅርብ ጊዜ መዝገቦች',
-                weekly: 'ሳምንታዊ',
-                monthly: 'ወርሃዊ',
-                yearly: 'ዓመታዊ',
-                totalSpent: 'ጠቅላላ ወጪ',
-                dailyAvg: 'በቀን',
-                spendingByCategory: 'ወጪ በምድብ',
-                expenseDistribution: 'የወጪ ክፍፍል',
-                noEvents: 'ምንም ሁነት አልተገኘም። ይፍጠሩ',
-                settings: 'ቅንብሮች',
-                language: 'ቋንቋ',
-                currency: 'ምንዛሬ',
-                preferences: 'ምርጫዎች',
-                ethiopianCalendar: 'የኢትዮጵያ ቀን መቁጠሪያ ተጠቀም',
-                dataManagement: 'የመረጃ አስተዳደር',
-                backupCsv: 'መረጃ አስቀምጥ (.csv)',
-                restoreCsv: 'መረጃ መልስ (.csv)',
-                security: 'ደህንነት',
-                fingerprintLock: 'የጣት አሻራ መቆለፊያ',
-                setupPin: 'የPIN መቆለፊያ አዘጋጅ',
-                actions: 'ተግባራት',
-                exportRecord: 'መዝገብ ላክ',
-                nightMode: 'የማታ ገጽታ'
+                navRecords: 'Records',
+                navReport: 'Report',
+                navBudget: 'Budget',
+                navEvents: 'Events',
+                navSettings: 'Settings',
+                totalBalance: 'Total Balance',
+                income: 'Income',
+                expense: 'Expense',
+                expenses: 'Expenses',
+                recentRecords: 'Recent Records',
+                weekly: 'Weekly',
+                monthly: 'Monthly',
+                yearly: 'Yearly',
+                totalSpent: 'Total Spent',
+                dailyAvg: 'Daily',
+                spendingByCategory: 'Spending by Category',
+                expenseDistribution: 'Expense Distribution',
+                noEvents: 'No events found. Create',
+                settings: 'SETTINGS',
+                language: 'Language',
+                currency: 'Currency',
+                preferences: 'PREFERENCES',
+                ethiopianCalendar: 'Use Ethiopian Calendar',
+                dataManagement: 'DATA MANAGEMENT',
+                backupCsv: 'Backup Data (.csv)',
+                restoreCsv: 'Restore Data (.csv)',
+                security: 'SECURITY',
+                fingerprintLock: 'Enable Fingerprint Lock',
+                setupPin: 'Set up PIN Lock',
+                actions: 'ACTIONS',
+                exportRecord: 'Export Record',
+                nightMode: 'Night Mode'
             }
         };
 
@@ -2710,7 +2711,7 @@
                 const key = el.getAttribute('data-i18n');
                 if (dict[key]) el.textContent = dict[key];
             });
-            const langNames = { en: 'English', om: 'Afaan Oromoo', am: 'አማርኛ' };
+            const langNames = { en: 'English', om: 'English', am: 'English' };
             document.getElementById('currentLangLabel').textContent = langNames[settings.lang] || 'English';
             document.getElementById('currentCurrLabel').textContent = settings.currency;
             updateHeader();
