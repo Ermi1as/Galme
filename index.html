@@ -1674,7 +1674,21 @@
                 </div>
                 <div class="form-field">
                     <label>Note / Description</label>
-                    <input type="text" id="recNote" required placeholder="e.g., Copy, Scan, CBE, Lemeleket...">
+                    <input type="text" id="recNote" required list="recNoteSuggestions" autocomplete="off" maxlength="120" placeholder="e.g., Rent, Food, Groceries, Transport, Salary...">
+                    <datalist id="recNoteSuggestions">
+                        <option value="Rent"></option>
+                        <option value="Food"></option>
+                        <option value="Groceries"></option>
+                        <option value="Transport"></option>
+                        <option value="Electricity"></option>
+                        <option value="Water"></option>
+                        <option value="Internet"></option>
+                        <option value="Mobile airtime"></option>
+                        <option value="Medical"></option>
+                        <option value="School fees"></option>
+                        <option value="Salary"></option>
+                        <option value="Sales"></option>
+                    </datalist>
                 </div>
                 <div class="form-field">
                     <label>Amount</label>
