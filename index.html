@@ -3432,13 +3432,13 @@
 
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
-            const userId = new TextEncoder().encode(email.toLowerCase());
-            const rpId = window.location.hostname || 'localhost';
+            const userId = new Uint8Array(16);
+            window.crypto.getRandomValues(userId);
 
             const cred = await navigator.credentials.create({
                 publicKey: {
                     challenge: challenge,
-                    rp: { name: 'Bookkeeping Ledger', id: rpId },
+                    rp: { name: 'Bookkeeping Ledger' },
                     user: {
                         id: userId,
                         name: email,
@@ -3471,7 +3471,6 @@
                     const assertion = await navigator.credentials.get({
                         publicKey: {
                             challenge: challenge,
-                            rpId: window.location.hostname || 'localhost',
                             allowCredentials: [{
                                 type: 'public-key',
                                 id: b64ToBytes(settings.biometricCredId)
@@ -3539,7 +3538,8 @@
                 if (n === 'NotAllowedError' || n === 'AbortError') showToast('Fingerprint setup cancelled or timed out');
                 else if (n === 'SecurityError') showToast('Fingerprint needs a secure (https) website');
                 else if (n === 'NotSupportedError') showToast('Fingerprint is not available here. Use PIN Lock instead.');
-                else showToast('Fingerprint setup failed. Use PIN Lock instead.');
+                else if (n === 'ConstraintError' || n === 'InvalidStateError') showToast('Set a phone screen lock and add a fingerprint in device settings first.');
+                else { console.error('Biometric setup error:', err); showToast('Fingerprint setup failed (' + (n || 'Error') + '). Use PIN Lock instead.'); }
             }
         });
 
