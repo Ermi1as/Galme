@@ -2793,6 +2793,42 @@
             }
         };
 
+        // ==========================================
+        // DATE HELPERS (Gregorian + Ethiopian calendar)
+        // ==========================================
+        const ETH_MONTHS = ['መስከረም', 'ጥቅምት', 'ኅዳር', 'ታኅሣሥ', 'ጥር', 'የካቲት', 'መጋቢት', 'ሚያዝያ', 'ግንቦት', 'ሰኔ', 'ሐምሌ', 'ነሐሴ', 'ጳጉሜን'];
+
+        // Today's date in the device's LOCAL time zone as YYYY-MM-DD (not UTC)
+        function todayIso() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        function isoToEthiopian(iso) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+            if (!m) return null;
+            const gy = +m[1], gm = +m[2], gd = +m[3];
+            const a = Math.floor((14 - gm) / 12);
+            const y = gy + 4800 - a;
+            const mm = gm + 12 * a - 3;
+            const jdn = gd + Math.floor((153 * mm + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+            const days = jdn - 1723856;
+            const cycle = Math.floor(days / 1461);
+            const r = days - cycle * 1461;
+            const n = (r % 365) + 365 * Math.floor(r / 1460);
+            return {
+                year: 4 * cycle + Math.floor(r / 365) - Math.floor(r / 1460),
+                month: Math.floor(n / 30) + 1,
+                day: (n % 30) + 1
+            };
+        }
+
+        // e.g. "ኅዳር 18, 2019"
+        function formatEthiopian(iso) {
+            const e = isoToEthiopian(iso);
+            return e ? `${ETH_MONTHS[e.month - 1]} ${e.day}, ${e.year}` : '';
+        }
+
         function formatMoney(val) {
             if (hideBalances) return '••••••';
             return Number(val).toLocaleString('en-US', {
@@ -2905,7 +2941,7 @@
             } else {
                 filteredBudget.forEach(rec => {
                     const isInc = rec.type === 'income';
-                    const dateDisplay = settings.ethCal ? (rec.ethDate || rec.isoDate) : rec.isoDate;
+                    const dateDisplay = settings.ethCal ? (formatEthiopian(rec.isoDate) || rec.ethDate || rec.isoDate) : rec.isoDate;
                     const card = document.createElement('div');
                     card.className = 'record-card';
                     card.innerHTML = `
@@ -3043,7 +3079,7 @@
                             </div>
                             <div class="record-info">
                                 <div class="record-title">${escapeHtml(ev.title)}</div>
-                                <div class="record-sub">${escapeHtml(ev.date)}</div>
+                                <div class="record-sub">${escapeHtml(settings.ethCal && ev.date ? (formatEthiopian(ev.date) || ev.date) : (ev.date || ''))}</div>
                             </div>
                         </div>
                         <div class="record-right">
@@ -3233,8 +3269,8 @@
                 category,
                 note,
                 amount,
-                ethDate: 'ጥቅምት 26, 2019',
-                isoDate: new Date().toISOString().slice(0, 10)
+                ethDate: formatEthiopian(todayIso()),
+                isoDate: todayIso()
             });
             saveUserState();
             renderAll();
@@ -3278,6 +3314,7 @@
             settings.ethCal = e.target.checked;
             saveUserState();
             renderAll();
+            renderEvents();
         });
 
         document.getElementById('nightModeToggle').addEventListener('change', (e) => {
@@ -3295,7 +3332,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `galmee-${currentUserEmail}-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.download = `galmee-${currentUserEmail}-${todayIso()}.csv`;
             a.click();
             URL.revokeObjectURL(url);
             showToast('CSV Backup downloaded');
@@ -3324,8 +3361,8 @@
                             category: parts[2].replace(/^"|"$/g, ''),
                             note: parts[3].replace(/^"|"$/g, ''),
                             amount: parseFloat(parts[4]) || 0,
-                            ethDate: (parts[5] || 'ጥቅምት 26, 2019').replace(/^"|"$/g, ''),
-                            isoDate: (parts[6] || new Date().toISOString().slice(0, 10)).trim()
+                            ethDate: (parts[5] || formatEthiopian(todayIso())).replace(/^"|"$/g, ''),
+                            isoDate: (parts[6] || todayIso()).trim()
                         });
                     }
                 });
@@ -3614,8 +3651,8 @@
                     category: String(r.category || 'Other').slice(0, 60),
                     note: String(r.note || '').slice(0, 200),
                     amount,
-                    ethDate: r.ethDate || 'ጥቅምት 26, 2019',
-                    isoDate: /^\d{4}-\d{2}-\d{2}$/.test(r.isoDate || '') ? r.isoDate : new Date().toISOString().slice(0, 10)
+                    ethDate: formatEthiopian(/^\d{4}-\d{2}-\d{2}$/.test(r.isoDate || '') ? r.isoDate : todayIso()),
+                    isoDate: /^\d{4}-\d{2}-\d{2}$/.test(r.isoDate || '') ? r.isoDate : todayIso()
                 });
             });
             return clean;
@@ -3714,10 +3751,30 @@
         const SUPPORT_EMAIL = 'Jemmyhouse1@gmail.com';
 
         document.getElementById('supportEmailRow').addEventListener('click', () => {
-            if (!SUPPORT_EMAIL) { showToast('Support email is not set up yet.'); return; }
-            const subject = encodeURIComponent('Bookkeeping Ledger Support');
-            const body = encodeURIComponent('Account: ' + (currentUserEmail || '') + '\n\nHow can we help?\n');
-            window.location.href = 'mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body;
+            const subject = 'Bookkeeping Ledger Support';
+            const body = 'Account: ' + (currentUserEmail || '') + '\n\nHow can we help?\n';
+            const mailto = 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+            const gmail = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(SUPPORT_EMAIL) +
+                '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+
+            // Always put the address on the clipboard as a safety net
+            try { if (navigator.clipboard) navigator.clipboard.writeText(SUPPORT_EMAIL); } catch (_) {}
+
+            // 1) Try the phone's default mail app
+            const link = document.createElement('a');
+            link.href = mailto;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            // 2) If no mail app took over, open Gmail compose in the browser
+            setTimeout(() => {
+                if (document.visibilityState === 'visible') {
+                    const w = window.open(gmail, '_blank', 'noopener');
+                    showToast(w ? 'Opening Gmail...' : 'Support email copied: ' + SUPPORT_EMAIL);
+                }
+            }, 1200);
         });
 
         // ---- Push notifications ----
