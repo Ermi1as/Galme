@@ -1196,6 +1196,12 @@
             border: 1px solid rgba(255, 255, 255, 0.22);
         }
 
+    
+        /* Menu button moved to bottom-left (mirrors the + button) */
+        .fab.menu-fab {
+            right: auto;
+            left: max(18px, calc(50vw - 222px));
+        }
     </style>
 </head>
 <body>
@@ -1583,6 +1589,7 @@
                         <span class="slider"></span>
                     </label>
                 </div>
+                <div id="bioUnsupportedNote" style="display:none; font-size:12px; color:#64748b; padding:0 16px 12px 58px;">Fingerprint isn't supported in this app or browser. Use PIN Lock instead.</div>
                 <div class="settings-row" id="setupPinRow">
                     <div class="settings-left">
                         <div class="settings-icon">
@@ -1628,6 +1635,9 @@
 
         <!-- FLOATING ACTION BUTTON -->
         <button class="fab" id="mainFab" aria-label="Add">+</button>
+        <button class="fab menu-fab" id="menuFab" aria-label="Menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
 
         <!-- BOTTOM NAVIGATION BAR -->
         <nav class="bottom-nav">
@@ -2905,6 +2915,8 @@
                 leftBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`;
             }
             rightBtn.style.visibility = 'visible';
+            leftBtn.style.visibility = (activeTab === 'records') ? 'hidden' : 'visible';
+            document.getElementById('menuFab').style.display = (activeTab === 'records') ? 'flex' : 'none';
 
             const fab = document.getElementById('mainFab');
             fab.style.display = (activeTab === 'records' || activeTab === 'budget' || activeTab === 'events') ? 'flex' : 'none';
@@ -3146,6 +3158,10 @@
             e.stopPropagation();
             if (activeTab === 'records') openDrawer();
             else switchTab('records');
+        });
+        document.getElementById('menuFab').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDrawer();
         });
         document.getElementById('rightHeaderBtn').addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -3507,6 +3523,29 @@
                     : 'Enter your 4-digit PIN to unlock';
             }
         }
+
+        async function refreshBiometricSupportUI() {
+            const toggle = document.getElementById('biometricToggle');
+            const note = document.getElementById('bioUnsupportedNote');
+            let ok = false;
+            try {
+                ok = isWebAuthnBiometricAvailable() && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            } catch (_) { ok = false; }
+            if (!ok) {
+                toggle.checked = false;
+                toggle.disabled = true;
+                if (settings.biometric) {
+                    settings.biometric = false;
+                    settings.biometricCredId = '';
+                    saveUserState();
+                    updateLockScreenUI();
+                }
+            } else {
+                toggle.disabled = false;
+            }
+            if (note) note.style.display = ok ? 'none' : 'block';
+        }
+        refreshBiometricSupportUI();
 
         document.getElementById('biometricToggle').addEventListener('change', async (e) => {
             const toggle = e.target;

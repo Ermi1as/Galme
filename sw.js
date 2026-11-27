@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bookkeeping-ledger-v53';
+const CACHE_NAME = 'bookkeeping-ledger-v54';
 const ASSETS = [
   './',
   './index.html',
@@ -17,7 +17,10 @@ const WIDGET_TAG = 'galmee-balance';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) =>
+    // Cache each asset separately so one missing file can never break installation
+    Promise.all(ASSETS.map((a) => cache.add(a).catch(() => {})))
+  ));
 });
 
 self.addEventListener('activate', (event) => {
