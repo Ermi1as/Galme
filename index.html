@@ -1060,6 +1060,141 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
+        /* LIQUID GLASS GUI OVERRIDE */
+        :root {
+            --liquid-surface: rgba(255, 255, 255, 0.72);
+            --liquid-surface-strong: rgba(255, 255, 255, 0.86);
+            --liquid-border: rgba(255, 255, 255, 0.65);
+            --liquid-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 10px 28px rgba(15, 23, 42, 0.08);
+            --liquid-blur: blur(18px) saturate(165%);
+        }
+
+        body.night-mode {
+            --liquid-surface: rgba(30, 41, 59, 0.72);
+            --liquid-surface-strong: rgba(15, 23, 42, 0.88);
+            --liquid-border: rgba(148, 163, 184, 0.24);
+            --liquid-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 30px rgba(0, 0, 0, 0.42);
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 12% 8%, rgba(59, 130, 246, 0.16), transparent 42%),
+                radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.14), transparent 45%),
+                radial-gradient(circle at 50% 85%, rgba(99, 102, 241, 0.12), transparent 48%),
+                var(--bg);
+        }
+
+        .app-header {
+            background: rgba(24, 62, 138, 0.82);
+            backdrop-filter: var(--liquid-blur);
+            -webkit-backdrop-filter: var(--liquid-blur);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+        }
+
+        body.night-mode .app-header {
+            background: rgba(15, 23, 42, 0.82);
+        }
+
+        .hero-card {
+            background: linear-gradient(145deg, rgba(13, 33, 66, 0.92), rgba(24, 62, 138, 0.84));
+            backdrop-filter: var(--liquid-blur);
+            -webkit-backdrop-filter: var(--liquid-blur);
+            border: 1px solid rgba(255, 255, 255, 0.26);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 14px 32px rgba(13, 33, 66, 0.28);
+        }
+
+        .auth-card,
+        .record-card,
+        .kpi-card,
+        .chart-card,
+        .settings-group,
+        .segmented-control,
+        .sub-tabs {
+            background: var(--liquid-surface);
+            backdrop-filter: var(--liquid-blur);
+            -webkit-backdrop-filter: var(--liquid-blur);
+            border: 1px solid var(--liquid-border);
+            box-shadow: var(--liquid-highlight);
+        }
+
+        .cat-icon-box,
+        .settings-icon {
+            background: rgba(24, 62, 138, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.45);
+        }
+
+        body.night-mode .cat-icon-box,
+        body.night-mode .settings-icon {
+            background: rgba(147, 197, 253, 0.14);
+            border-color: rgba(148, 163, 184, 0.25);
+        }
+
+        .form-field input,
+        .form-field select {
+            background: var(--liquid-surface-strong);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--liquid-border);
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, rgba(24, 62, 138, 0.95), rgba(37, 99, 235, 0.9));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 20px rgba(24, 62, 138, 0.28);
+        }
+
+        .secondary-btn {
+            background: rgba(226, 232, 240, 0.72);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--liquid-border);
+        }
+
+        .fab {
+            background: linear-gradient(145deg, rgba(24, 62, 138, 0.92), rgba(37, 99, 235, 0.88));
+            backdrop-filter: var(--liquid-blur);
+            -webkit-backdrop-filter: var(--liquid-blur);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45), 0 10px 24px rgba(24, 62, 138, 0.35);
+        }
+
+        .bottom-nav {
+            background: var(--liquid-surface-strong);
+            backdrop-filter: var(--liquid-blur);
+            -webkit-backdrop-filter: var(--liquid-blur);
+            border-top: 1px solid var(--liquid-border);
+        }
+
+        .side-drawer {
+            background: var(--liquid-surface-strong);
+            backdrop-filter: blur(22px) saturate(170%);
+            -webkit-backdrop-filter: blur(22px) saturate(170%);
+            border-right: 1px solid var(--liquid-border);
+        }
+
+        .drawer-header {
+            background: linear-gradient(150deg, rgba(13, 33, 66, 0.95), rgba(24, 62, 138, 0.88));
+            backdrop-filter: var(--liquid-blur);
+            -webkit-backdrop-filter: var(--liquid-blur);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-sheet {
+            background: var(--liquid-surface-strong);
+            backdrop-filter: blur(22px) saturate(170%);
+            -webkit-backdrop-filter: blur(22px) saturate(170%);
+            border-top: 1px solid var(--liquid-border);
+        }
+
+        .toast {
+            background: rgba(15, 23, 42, 0.86);
+            backdrop-filter: var(--liquid-blur);
+            -webkit-backdrop-filter: var(--liquid-blur);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+        }
+
     </style>
 </head>
 <body>
@@ -1654,7 +1789,7 @@
         // ==========================================
         // CLOUD CROSS-DEVICE SYNC ENGINE (SUPABASE)
         // ==========================================
-        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v45';
+        const CLOUD_CFG_STORAGE_KEY = 'galmee_cloud_sync_cfg_v46';
         const DEFAULT_CLOUD_CFG = {
             url: 'https://uyygiyblgmkmiuqszfen.supabase.co',
             anonKey: 'sb_publishable_rUhThrNnTqf5DCqrQuXh3Q_ZZPLwIVv',
@@ -3013,11 +3148,10 @@
 
         // Settings Controls
         document.getElementById('settingLangRow').addEventListener('click', () => {
-            const order = ['en', 'om', 'am'];
-            settings.lang = order[(order.indexOf(settings.lang) + 1) % order.length];
+            settings.lang = 'en';
             saveUserState();
             applyTranslations();
-            showToast('Language updated');
+            showToast('Language: English');
         });
 
         document.getElementById('settingCurrRow').addEventListener('click', () => {
