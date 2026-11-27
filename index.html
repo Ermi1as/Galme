@@ -1741,6 +1741,16 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="languageModal">
+        <div class="modal-sheet">
+            <div class="modal-head">
+                <h3>Language / ቋንቋ</h3>
+                <button class="close-modal" id="closeLanguageModal">&times;</button>
+            </div>
+            <div id="languageList"></div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="eventModal">
         <div class="modal-sheet">
             <div class="modal-head">
@@ -2095,7 +2105,7 @@
             } catch (_) {}
 
             if (remoteRow.settings && typeof remoteRow.settings === 'object' && !hasPendingCloudSync(normEmail)) {
-                settings = Object.assign({}, settings, remoteRow.settings, { lang: 'en' });
+                settings = Object.assign({}, settings, remoteRow.settings);
                 try { localStorage.setItem(userSettingsKey(normEmail), JSON.stringify(settings)); } catch (_) {}
             }
 
@@ -2662,7 +2672,7 @@
                 nightMode: false,
                 biometric: false,
                 pin: ''
-            }, JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {}, { lang: 'en' });
+            }, JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {});
 
             let initialCloudSynced = false;
             if (isCloudSyncEnabled()) {
@@ -2720,6 +2730,15 @@
             syncCurrentUserToCloud(false);
         }
 
+        // Supported interface languages
+        const LANGUAGES = [
+            { code: 'en', native: 'English', english: 'English' },
+            { code: 'am', native: 'አማርኛ', english: 'Amharic' },
+            { code: 'om', native: 'Afaan Oromoo', english: 'Oromo' },
+            { code: 'ti', native: 'ትግርኛ', english: 'Tigrinya' },
+            { code: 'so', native: 'Soomaali', english: 'Somali' }
+        ];
+
         // Translations
         const I18N = {
             en: {
@@ -2757,72 +2776,140 @@
                 nightMode: 'Night Mode'
             },
             om: {
-                navRecords: 'Records',
-                navReport: 'Report',
-                navBudget: 'Budget',
-                navEvents: 'Events',
-                navSettings: 'Settings',
-                totalBalance: 'Total Balance',
-                income: 'Income',
-                expense: 'Expense',
-                expenses: 'Expenses',
-                recentRecords: 'Recent Records',
-                weekly: 'Weekly',
-                monthly: 'Monthly',
-                yearly: 'Yearly',
-                totalSpent: 'Total Spent',
-                dailyAvg: 'Daily',
-                spendingByCategory: 'Spending by Category',
-                expenseDistribution: 'Expense Distribution',
-                noEvents: 'No events found. Create',
-                settings: 'SETTINGS',
-                language: 'Language',
-                currency: 'Currency',
-                preferences: 'PREFERENCES',
-                ethiopianCalendar: 'Use Ethiopian Calendar',
-                dataManagement: 'DATA MANAGEMENT',
-                backupCsv: 'Backup Data (.csv)',
-                restoreCsv: 'Restore Data (.csv)',
-                security: 'SECURITY',
-                fingerprintLock: 'Enable Fingerprint Lock',
-                setupPin: 'Set up PIN Lock',
-                actions: 'ACTIONS',
-                exportRecord: 'Export Record',
-                nightMode: 'Night Mode'
+                navRecords: 'Galmeewwan',
+                navReport: 'Gabaasa',
+                navBudget: 'Baajata',
+                navEvents: 'Taateewwan',
+                navSettings: 'Qindaa\'ina',
+                totalBalance: 'Hafaa Waliigalaa',
+                income: 'Galii',
+                expense: 'Baasii',
+                expenses: 'Baasiiwwan',
+                recentRecords: 'Galmeewwan Dhiyoo',
+                weekly: 'Torbanii',
+                monthly: 'Ji\'aa',
+                yearly: 'Waggaa',
+                totalSpent: 'Baasii Waliigalaa',
+                dailyAvg: 'Guyyaa',
+                spendingByCategory: 'Baasii Gosaan',
+                expenseDistribution: 'Raabsa Baasii',
+                noEvents: 'Taatee hin argamne. Uumi',
+                settings: 'QINDAA\'INA',
+                language: 'Afaan',
+                currency: 'Maallaqa',
+                preferences: 'FILANNOO',
+                ethiopianCalendar: 'Kaalaandarii Itiyoophiyaa Fayyadami',
+                dataManagement: 'MARII\'ATA DAATAA',
+                backupCsv: 'Daataa Kuusi (.csv)',
+                restoreCsv: 'Daataa Deebisi (.csv)',
+                security: 'NAGEENYA',
+                fingerprintLock: 'Cufaa Mallattoo Quba Eegali',
+                setupPin: 'Cufaa PIN Qopheessi',
+                actions: 'TARKAANFIIWWAN',
+                exportRecord: 'Galmee Ergi',
+                nightMode: 'Haalata Halkanii'
             },
             am: {
-                navRecords: 'Records',
-                navReport: 'Report',
-                navBudget: 'Budget',
-                navEvents: 'Events',
-                navSettings: 'Settings',
-                totalBalance: 'Total Balance',
-                income: 'Income',
-                expense: 'Expense',
-                expenses: 'Expenses',
-                recentRecords: 'Recent Records',
-                weekly: 'Weekly',
-                monthly: 'Monthly',
-                yearly: 'Yearly',
-                totalSpent: 'Total Spent',
-                dailyAvg: 'Daily',
-                spendingByCategory: 'Spending by Category',
-                expenseDistribution: 'Expense Distribution',
-                noEvents: 'No events found. Create',
-                settings: 'SETTINGS',
-                language: 'Language',
-                currency: 'Currency',
-                preferences: 'PREFERENCES',
-                ethiopianCalendar: 'Use Ethiopian Calendar',
-                dataManagement: 'DATA MANAGEMENT',
-                backupCsv: 'Backup Data (.csv)',
-                restoreCsv: 'Restore Data (.csv)',
-                security: 'SECURITY',
-                fingerprintLock: 'Enable Fingerprint Lock',
-                setupPin: 'Set up PIN Lock',
-                actions: 'ACTIONS',
-                exportRecord: 'Export Record',
-                nightMode: 'Night Mode'
+                navRecords: 'መዝገቦች',
+                navReport: 'ሪፖርት',
+                navBudget: 'በጀት',
+                navEvents: 'ክስተቶች',
+                navSettings: 'ቅንብሮች',
+                totalBalance: 'ጠቅላላ ሂሳብ',
+                income: 'ገቢ',
+                expense: 'ወጪ',
+                expenses: 'ወጪዎች',
+                recentRecords: 'የቅርብ ጊዜ መዝገቦች',
+                weekly: 'ሳምንታዊ',
+                monthly: 'ወርሃዊ',
+                yearly: 'ዓመታዊ',
+                totalSpent: 'ጠቅላላ ወጪ',
+                dailyAvg: 'ዕለታዊ',
+                spendingByCategory: 'ወጪ በምድብ',
+                expenseDistribution: 'የወጪ ስርጭት',
+                noEvents: 'ምንም ክስተት አልተገኘም። ፍጠር',
+                settings: 'ቅንብሮች',
+                language: 'ቋንቋ',
+                currency: 'ገንዘብ',
+                preferences: 'ምርጫዎች',
+                ethiopianCalendar: 'የኢትዮጵያ ቀን መቁጠሪያ ተጠቀም',
+                dataManagement: 'የውሂብ አስተዳደር',
+                backupCsv: 'ውሂብ ምትኬ (.csv)',
+                restoreCsv: 'ውሂብ መልስ (.csv)',
+                security: 'ደህንነት',
+                fingerprintLock: 'የጣት አሻራ መቆለፊያ አንቃ',
+                setupPin: 'ፒን መቆለፊያ አዘጋጅ',
+                actions: 'እርምጃዎች',
+                exportRecord: 'መዝገብ ላክ',
+                nightMode: 'የሌሊት ሁነታ'
+            },
+            ti: {
+                navRecords: 'መዝገባት',
+                navReport: 'ጸብጻብ',
+                navBudget: 'ባጀት',
+                navEvents: 'ፍጻሜታት',
+                navSettings: 'ቅጥዕታት',
+                totalBalance: 'ጠቕላላ ሚዛን',
+                income: 'እቶት',
+                expense: 'ወጻኢ',
+                expenses: 'ወጻኢታት',
+                recentRecords: 'ናይ ቀረባ ግዜ መዝገባት',
+                weekly: 'ሰሙናዊ',
+                monthly: 'ወርሓዊ',
+                yearly: 'ዓመታዊ',
+                totalSpent: 'ጠቕላላ ወጻኢ',
+                dailyAvg: 'ዕለታዊ',
+                spendingByCategory: 'ወጻኢ ብምድብ',
+                expenseDistribution: 'ዝርጋሐ ወጻኢ',
+                noEvents: 'ዝኾነ ፍጻሜ ኣይተረኽበን። ፍጠር',
+                settings: 'ቅጥዕታት',
+                language: 'ቋንቋ',
+                currency: 'ገንዘብ',
+                preferences: 'ምርጫታት',
+                ethiopianCalendar: 'ናይ ኢትዮጵያ ካላንደር ተጠቐም',
+                dataManagement: 'ምምሕዳር ዳታ',
+                backupCsv: 'ዳታ ኣቐምጥ (.csv)',
+                restoreCsv: 'ዳታ መልስ (.csv)',
+                security: 'ድሕንነት',
+                fingerprintLock: 'ናይ ጣት ሕታም መቆለፍታ ኣንቅሕ',
+                setupPin: 'ፒን መቆለፍታ ኣዳሉ',
+                actions: 'ተግባራት',
+                exportRecord: 'መዝገብ ሰድድ',
+                nightMode: 'ናይ ለይቲ ሞድ'
+            },
+            so: {
+                navRecords: 'Diiwaanada',
+                navReport: 'Warbixin',
+                navBudget: 'Miisaaniyad',
+                navEvents: 'Dhacdooyin',
+                navSettings: 'Dejinta',
+                totalBalance: 'Hadhaaga Guud',
+                income: 'Dakhli',
+                expense: 'Kharash',
+                expenses: 'Kharashyada',
+                recentRecords: 'Diiwaannadii Ugu Dambeeyay',
+                weekly: 'Toddobaadle',
+                monthly: 'Bille',
+                yearly: 'Sannadle',
+                totalSpent: 'Wadarta Kharashka',
+                dailyAvg: 'Maalinle',
+                spendingByCategory: 'Kharashka Qaybaha',
+                expenseDistribution: 'Qaybinta Kharashka',
+                noEvents: 'Dhacdo lama helin. Samee',
+                settings: 'DEJINTA',
+                language: 'Luuqad',
+                currency: 'Lacag',
+                preferences: 'DOORASHOOYIN',
+                ethiopianCalendar: 'Isticmaal Kalandarka Itoobiya',
+                dataManagement: 'MANAAJINTA DATA',
+                backupCsv: 'Kaydi Data (.csv)',
+                restoreCsv: 'Soo Celi Data (.csv)',
+                security: 'AMNIGA',
+                fingerprintLock: 'Awood Gali Qufulka Faraha',
+                setupPin: 'Deji Qufulka PIN',
+                actions: 'TALLAABOOYIN',
+                exportRecord: 'Dhoofi Diiwaanka',
+                nightMode: 'Habka Habeenka'
             }
         };
 
@@ -2884,19 +2971,19 @@
         }
 
         function applyTranslations() {
-            const dict = I18N[settings.lang] || I18N.en;
+            const dict = Object.assign({}, I18N.en, I18N[settings.lang] || {});
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (dict[key]) el.textContent = dict[key];
             });
-            const langNames = { en: 'English', om: 'English', am: 'English' };
-            document.getElementById('currentLangLabel').textContent = langNames[settings.lang] || 'English';
+            document.getElementById('currentLangLabel').textContent = (LANGUAGES.find(l => l.code === settings.lang) || LANGUAGES[0]).native;
+            document.documentElement.lang = I18N[settings.lang] ? settings.lang : 'en';
             document.getElementById('currentCurrLabel').textContent = settings.currency;
             updateHeader();
         }
 
         function updateHeader() {
-            const dict = I18N[settings.lang] || I18N.en;
+            const dict = Object.assign({}, I18N.en, I18N[settings.lang] || {});
             const titleMap = {
                 records: dict.navRecords,
                 report: dict.navReport,
@@ -3097,7 +3184,7 @@
 
         function renderEvents() {
             const container = document.getElementById('eventsContainer');
-            const dict = I18N[settings.lang] || I18N.en;
+            const dict = Object.assign({}, I18N.en, I18N[settings.lang] || {});
             if (events.length === 0) {
                 container.innerHTML = `
                     <div class="empty-center">
@@ -3333,11 +3420,35 @@
         });
 
         // Settings Controls
+        function renderLanguageList() {
+            const list = document.getElementById('languageList');
+            list.innerHTML = LANGUAGES.map(l => `
+                <div class="settings-row lang-option" data-lang="${l.code}" style="cursor:pointer;">
+                    <div class="settings-left">
+                        <span class="settings-name">${l.native}</span>
+                    </div>
+                    <div class="settings-val">${l.code === settings.lang ? '&#10003;' : l.english}</div>
+                </div>`).join('');
+            list.querySelectorAll('.lang-option').forEach(row => {
+                row.addEventListener('click', () => {
+                    settings.lang = row.dataset.lang;
+                    saveUserState();
+                    applyTranslations();
+                    renderAll();
+                    document.getElementById('languageModal').classList.remove('open');
+                    showToast(LANGUAGES.find(x => x.code === settings.lang).native);
+                });
+            });
+        }
         document.getElementById('settingLangRow').addEventListener('click', () => {
-            settings.lang = 'en';
-            saveUserState();
-            applyTranslations();
-            showToast('Language: English');
+            renderLanguageList();
+            document.getElementById('languageModal').classList.add('open');
+        });
+        document.getElementById('closeLanguageModal').addEventListener('click', () => {
+            document.getElementById('languageModal').classList.remove('open');
+        });
+        document.getElementById('languageModal').addEventListener('click', (e) => {
+            if (e.target.id === 'languageModal') e.target.classList.remove('open');
         });
 
         document.getElementById('settingCurrRow').addEventListener('click', () => {
