@@ -1343,9 +1343,14 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <div class="header-title" id="headerTitle">Records</div>
+            <div class="header-right" style="display:flex; align-items:center; gap:2px;">
+                <button class="header-btn" id="resetRecordsBtn" aria-label="Reset records" title="Reset records to zero">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                </button>
             <button class="header-btn" id="rightHeaderBtn" aria-label="Refresh" title="Refresh">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
+            </div>
         </header>
 
         <!-- SIDE NAVIGATION DRAWER -->
@@ -1738,6 +1743,16 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="resetModal">
+        <div class="modal-sheet">
+            <div class="modal-head">
+                <h3>Reset records</h3>
+                <button class="close-modal" id="closeResetModal">&times;</button>
+            </div>
+            <div id="resetModalBody"></div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="pinModal">
         <div class="modal-sheet">
             <div class="modal-head">
@@ -1935,7 +1950,7 @@
             const set = getDeletedIdsSet(email);
             set.add(String(id));
             try {
-                localStorage.setItem(deletedIdsKey(email), JSON.stringify(Array.from(set).slice(-500)));
+                localStorage.setItem(deletedIdsKey(email), JSON.stringify(Array.from(set).slice(-5000)));
             } catch (_) {}
         }
 
@@ -3005,6 +3020,7 @@
                 leftBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`;
             }
             rightBtn.style.visibility = 'visible';
+            document.getElementById('resetRecordsBtn').style.display = (activeTab === 'records') ? 'flex' : 'none';
             leftBtn.style.visibility = (activeTab === 'records') ? 'hidden' : 'visible';
             document.getElementById('menuFab').style.display = (activeTab === 'records') ? 'flex' : 'none';
 
@@ -3542,6 +3558,48 @@
             if (pinBtn) pinBtn.style.display = settings.pin ? 'inline-flex' : 'none';
             if (hint) hint.textContent = 'Enter your ' + len + '-digit PIN to unlock';
         }
+
+        // ---- Reset all records to zero ----
+        const resetModalEl = document.getElementById('resetModal');
+        const resetBodyEl = document.getElementById('resetModalBody');
+        function closeResetModal() { resetModalEl.classList.remove('open'); resetBodyEl.innerHTML = ''; }
+
+        function openResetModal() {
+            if (!currentUserEmail) return;
+            const n = records.length;
+            if (n === 0) { showToast('No records to reset'); return; }
+            const needPin = Boolean(settings.pin);
+            resetBodyEl.innerHTML = `
+                <p style="color:var(--text); font-size:0.92rem; line-height:1.5; margin-bottom:6px;">
+                    This permanently deletes all <b>${n}</b> record${n === 1 ? '' : 's'} and sets the balance, income and expense to <b>0.00</b>.
+                </p>
+                <p style="color:var(--text-muted); font-size:0.82rem; margin-bottom:12px;">Events and budgets are not changed. This cannot be undone. Use Backup Data (.csv) first if you may need these records.</p>
+                ${needPin ? '<div class="form-field"><label>Enter your PIN to confirm</label><input type="password" id="resetPinInput" inputmode="numeric" autocomplete="off" style="letter-spacing:6px; text-align:center;" maxlength="' + settings.pin.length + '"></div>' : ''}
+                <div class="pin-error" id="resetErr"></div>
+                <button class="submit-btn" id="resetConfirmBtn" type="button" style="background:#dc2626;">Reset to zero</button>
+                <button class="secondary-btn" id="resetCancelBtn" type="button">Cancel</button>`;
+            resetModalEl.classList.add('open');
+            const pinEl = document.getElementById('resetPinInput');
+            if (pinEl) { pinEl.addEventListener('input', () => { pinEl.value = pinEl.value.replace(/\D/g, ''); }); setTimeout(() => pinEl.focus(), 50); }
+            document.getElementById('resetCancelBtn').onclick = closeResetModal;
+            document.getElementById('resetConfirmBtn').onclick = () => {
+                if (needPin && (!pinEl.value || pinEl.value !== settings.pin)) {
+                    document.getElementById('resetErr').textContent = 'Incorrect PIN.';
+                    pinEl.value = '';
+                    return;
+                }
+                // Mark every record as deleted so cloud sync cannot bring them back
+                records.forEach(r => markIdDeleted(currentUserEmail, r.id));
+                records = [];
+                saveUserState();
+                renderAll();
+                closeResetModal();
+                showToast('All records reset to zero');
+            };
+        }
+        document.getElementById('resetRecordsBtn').addEventListener('click', (e) => { e.stopPropagation(); openResetModal(); });
+        document.getElementById('closeResetModal').addEventListener('click', closeResetModal);
+        resetModalEl.addEventListener('click', (e) => { if (e.target === resetModalEl) closeResetModal(); });
 
         // ---- PIN Lock setup (4 or 6 digits; changing/turning off requires the current PIN) ----
         const pinModalEl = document.getElementById('pinModal');
