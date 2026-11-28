@@ -1408,6 +1408,35 @@
             box-shadow: none;
             transition: transform 0.2s ease;
         }
+    
+        /* Dark blue confirm dialog (replaces the browser's native confirm box) */
+        .confirm-overlay {
+            position: fixed; inset: 0; z-index: 1000;
+            display: none; align-items: center; justify-content: center;
+            padding: 24px;
+            background: rgba(2, 10, 35, 0.62);
+            backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+        }
+        .confirm-overlay.open { display: flex; }
+        .confirm-box {
+            width: 100%; max-width: 360px;
+            border-radius: 22px;
+            padding: 22px 20px 16px;
+            color: #ffffff;
+            background: linear-gradient(160deg, #0b1f4d, #0a1a40 60%, #061233);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.18);
+        }
+        .confirm-title { font-size: 1.15rem; font-weight: 800; margin-bottom: 8px; }
+        .confirm-msg { font-size: 0.95rem; line-height: 1.45; color: #dbe7ff; white-space: pre-line; margin-bottom: 18px; overflow-wrap: anywhere; }
+        .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .confirm-btn {
+            border: none; cursor: pointer; border-radius: 12px;
+            padding: 11px 18px; font-size: 0.95rem; font-weight: 800; min-width: 92px;
+        }
+        .confirm-btn.cancel { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
+        .confirm-btn.ok { background: #dc2626; color: #ffffff; }
+        .confirm-btn.ok.neutral { background: #2563eb; }
     </style>
 </head>
 <body>
@@ -2511,6 +2540,47 @@
         const MAX_OTP_ATTEMPTS = 5;
         const MIN_PASSWORD_LENGTH = 6;
 
+        // Dark blue in-app confirm dialog; resolves true (OK) or false (Cancel)
+        function askConfirm(title, message, okLabel, danger) {
+            return new Promise((resolve) => {
+                let overlay = document.getElementById('confirmOverlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'confirmOverlay';
+                    overlay.className = 'confirm-overlay';
+                    overlay.innerHTML = `
+                        <div class="confirm-box" role="alertdialog" aria-modal="true">
+                            <div class="confirm-title" id="confirmTitle"></div>
+                            <div class="confirm-msg" id="confirmMsg"></div>
+                            <div class="confirm-actions">
+                                <button type="button" class="confirm-btn cancel" id="confirmCancel">Cancel</button>
+                                <button type="button" class="confirm-btn ok" id="confirmOk">OK</button>
+                            </div>
+                        </div>`;
+                    document.body.appendChild(overlay);
+                }
+                const okBtn = document.getElementById('confirmOk');
+                const cancelBtn = document.getElementById('confirmCancel');
+                document.getElementById('confirmTitle').textContent = title;
+                document.getElementById('confirmMsg').textContent = message;
+                okBtn.textContent = okLabel || 'OK';
+                okBtn.classList.toggle('neutral', danger === false);
+                overlay.classList.add('open');
+                const finish = (val) => {
+                    overlay.classList.remove('open');
+                    okBtn.onclick = cancelBtn.onclick = overlay.onclick = null;
+                    document.removeEventListener('keydown', onKey);
+                    resolve(val);
+                };
+                const onKey = (e) => { if (e.key === 'Escape') finish(false); };
+                document.addEventListener('keydown', onKey);
+                okBtn.onclick = () => finish(true);
+                cancelBtn.onclick = () => finish(false);
+                overlay.onclick = (e) => { if (e.target === overlay) finish(false); };
+                setTimeout(() => cancelBtn.focus(), 30);
+            });
+        }
+
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.textContent = msg;
@@ -3576,12 +3646,12 @@
             }
         }
 
-        function deleteRecord(id) {
+        async function deleteRecord(id) {
             const target = records.find(r => r.id === id);
             if (target) {
                 const sign = target.type === 'income' ? '+' : '-';
                 const label = `${target.category} (${sign}${Number(target.amount).toLocaleString('en-US')} ${settings.currency})`;
-                if (!confirm(`Delete this record?\n${label}`)) return;
+                if (!(await askConfirm('Delete this record?', label, 'Delete', true))) return;
             }
             markIdDeleted(currentUserEmail, id);
             records = records.filter(r => r.id !== id);
@@ -4328,7 +4398,7 @@
         }
 
         // Files opened from the OS (.csv backup or .json) are MERGED after confirmation.
-        function handleLaunchedFile(name, text) {
+        async function handleLaunchedFile(name, text) {
             let incoming = [];
             try {
                 if (/\.json$/i.test(name)) {
@@ -4347,7 +4417,7 @@
                 return;
             }
             if (!incoming.length) { showToast('No valid records found in ' + name); return; }
-            if (!confirm(`Add ${incoming.length} record(s) from "${name}" to your ledger?`)) return;
+            if (!(await askConfirm('Import records?', `Add ${incoming.length} record(s) from "${name}" to your ledger?`, 'Import', false))) return;
             records = incoming.concat(records);
             saveUserState();
             renderAll();
