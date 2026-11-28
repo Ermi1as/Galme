@@ -1,4 +1,4 @@
-# Bookkeeping Ledger (Galmee) – PWA
+# Bookkeeping Ledger – PWA
 
 ## Files
 - index.html – the full app

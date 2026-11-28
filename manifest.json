@@ -1,7 +1,7 @@
 {
   "id": "./index.html",
   "name": "Bookkeeping Ledger - Expense & Bookkeeping",
-  "short_name": "Galmee",
+  "short_name": "Ledger",
   "description": "Multi-user bilingual daily income, expense, budget, analytics, and Ethiopian calendar bookkeeping app with cross-device cloud sync and email OTP verification.",
   "start_url": "./index.html",
   "scope": "./",
