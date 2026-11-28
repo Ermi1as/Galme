@@ -92,6 +92,11 @@
             display: flex;
         }
 
+        /* A saved session exists: never flash the login screen while the app loads */
+        html.has-session #authWrapper {
+            display: none !important;
+        }
+
         .auth-brand {
             text-align: center;
             margin-bottom: 22px;
@@ -1344,6 +1349,15 @@
     </style>
 </head>
 <body>
+    <script>
+        (function () {
+            try {
+                var email = localStorage.getItem('galmee_active_user_v5');
+                var db = JSON.parse(localStorage.getItem('galmee_users_db_v5') || '{}');
+                if (email && db && db[email]) document.documentElement.classList.add('has-session');
+            } catch (e) {}
+        })();
+    </script>
 
     <!-- ========================================== -->
     <!-- 1. MULTI-USER AUTHENTICATION & EMAIL OTP   -->
@@ -2024,6 +2038,9 @@
         // ==========================================
         const USERS_DB_KEY = 'galmee_users_db_v5';
         const ACTIVE_USER_KEY = 'galmee_active_user_v5';
+        const LAST_TAB_KEY = 'galmee_last_tab_v1';
+        const LAST_SCROLL_KEY = 'galmee_last_scroll_v1';
+        const VALID_TABS = ['records', 'report', 'budget', 'events', 'settings'];
         const EMAILJS_CFG_KEY = 'galmee_emailjs_cfg_v5';
 
         // Default Pre-Configured EmailJS keys (users can replace with their own in Settings)
@@ -2846,6 +2863,9 @@
             currentUserEmail = '';
             records = [];
             events = [];
+            document.documentElement.classList.remove('has-session');
+            try { localStorage.removeItem(LAST_TAB_KEY); sessionStorage.removeItem(LAST_SCROLL_KEY); } catch (_) {}
+            if (history.replaceState) history.replaceState(null, '', location.pathname + location.search);
             document.getElementById('mainAppShell').classList.remove('active');
             document.getElementById('authWrapper').classList.add('active');
             document.getElementById('authStepOtp').style.display = 'none';
@@ -2877,6 +2897,20 @@
                 biometric: false,
                 pin: ''
             }, JSON.parse(localStorage.getItem(userSettingsKey(normEmail))) || {});
+
+            // Show the workspace right away from local data (no login flash while the cloud merge runs)
+            if (!document.getElementById('mainAppShell').classList.contains('active')) {
+                document.documentElement.classList.add('has-session');
+                document.getElementById('authWrapper').classList.remove('active');
+                document.getElementById('mainAppShell').classList.add('active');
+                document.body.classList.toggle('night-mode', Boolean(settings.nightMode));
+                updateLockScreenUI();
+                if (settings.pin) document.getElementById('pinOverlay').classList.add('open');
+                const earlyHash = (location.hash || '').slice(1);
+                let earlyTab = 'records';
+                try { earlyTab = localStorage.getItem(LAST_TAB_KEY) || 'records'; } catch (_) {}
+                switchTab(VALID_TABS.includes(earlyHash) ? earlyHash : (VALID_TABS.includes(earlyTab) ? earlyTab : 'records'));
+            }
 
             let initialCloudSynced = false;
             if (isCloudSyncEnabled()) {
@@ -2913,8 +2947,8 @@
             }
 
             applyTranslations();
-            const hashTab = (location.hash || '').slice(1);
-            switchTab(['records', 'report', 'budget', 'events', 'settings'].includes(hashTab) ? hashTab : 'records');
+            switchTab(VALID_TABS.includes(activeTab) ? activeTab : 'records');
+            restoreScrollOnce();
             if (initialCloudSynced) {
                 showToast('Account synced');
             }
@@ -3239,6 +3273,8 @@
 
         function switchTab(tab) {
             activeTab = tab;
+            try { localStorage.setItem(LAST_TAB_KEY, tab); } catch (_) {}
+            if (currentUserEmail && history.replaceState) history.replaceState(null, '', '#' + tab);
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.getElementById('view-' + tab).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => {
@@ -4352,12 +4388,33 @@
             }
         });
 
+        // ---- Remember scroll position across refresh ----
+        let scrollRestored = false;
+        function saveScrollPos() {
+            if (!currentUserEmail) return;
+            try { sessionStorage.setItem(LAST_SCROLL_KEY, JSON.stringify({ tab: activeTab, y: window.scrollY })); } catch (_) {}
+        }
+        function restoreScrollOnce() {
+            if (scrollRestored) return;
+            scrollRestored = true;
+            try {
+                const saved = JSON.parse(sessionStorage.getItem(LAST_SCROLL_KEY) || 'null');
+                if (saved && saved.tab === activeTab && saved.y > 0) {
+                    requestAnimationFrame(() => window.scrollTo(0, saved.y));
+                }
+            } catch (_) {}
+        }
+        window.addEventListener('pagehide', saveScrollPos);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveScrollPos(); });
+
         // Boot Application
         applyFontSize();
         updateAuthButtonLabel();
 
         if (currentUserEmail && usersDb[currentUserEmail]) {
             loadUserWorkspace(currentUserEmail);
+        } else {
+            document.documentElement.classList.remove('has-session');
         }
 
         if ('serviceWorker' in navigator) {
