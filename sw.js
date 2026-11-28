@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bookkeeping-ledger-v58';
+const CACHE_NAME = 'bookkeeping-ledger-v59';
 const ASSETS = [
   './',
   './index.html',

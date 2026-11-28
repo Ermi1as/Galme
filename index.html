@@ -1339,14 +1339,16 @@
     <div id="mainAppShell" class="main-app-shell">
         <!-- TOP BAR -->
         <header class="app-header">
-            <button class="header-btn" id="leftHeaderBtn" aria-label="Menu">
+            <div class="header-left" style="display:flex; align-items:center; gap:2px; min-width:76px;">
+                <button class="header-btn" id="leftHeaderBtn" aria-label="Menu">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
-            <div class="header-title" id="headerTitle">Records</div>
-            <div class="header-right" style="display:flex; align-items:center; gap:2px;">
-                <button class="header-btn" id="resetRecordsBtn" aria-label="Reset records" title="Reset records to zero">
+    <button class="header-btn" id="resetRecordsBtn" aria-label="Reset records" title="Reset records to zero">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                 </button>
+            </div>
+            <div class="header-title" id="headerTitle">Records</div>
+            <div class="header-right" style="display:flex; align-items:center; justify-content:flex-end; gap:2px; min-width:76px;">
             <button class="header-btn" id="rightHeaderBtn" aria-label="Refresh" title="Refresh">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
@@ -3021,7 +3023,7 @@
             }
             rightBtn.style.visibility = 'visible';
             document.getElementById('resetRecordsBtn').style.display = (activeTab === 'records') ? 'flex' : 'none';
-            leftBtn.style.visibility = (activeTab === 'records') ? 'hidden' : 'visible';
+            leftBtn.style.display = (activeTab === 'records') ? 'none' : 'flex';
             document.getElementById('menuFab').style.display = (activeTab === 'records') ? 'flex' : 'none';
 
             const fab = document.getElementById('mainFab');
