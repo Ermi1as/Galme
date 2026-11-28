@@ -1224,6 +1224,48 @@
         .pin-seg button.active { background: var(--header-bg); color: #ffffff; border-color: transparent; }
         #pinModalBody .form-field input { letter-spacing: 6px; text-align: center; }
         .pin-error { color: #dc2626; font-size: 0.82rem; min-height: 18px; margin: 2px 0 6px; }
+    
+        /* Blue liquid Income / Expense switch */
+        .type-toggle {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 5px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: linear-gradient(120deg, #1e3a8a, #2563eb, #38bdf8, #2563eb, #1e3a8a);
+            background-size: 300% 100%;
+            animation: liquidFlow 7s ease-in-out infinite;
+            box-shadow: inset 0 2px 6px rgba(255,255,255,0.35), inset 0 -3px 8px rgba(8,25,70,0.45), 0 6px 16px rgba(37,99,235,0.28);
+            border: 1px solid rgba(255,255,255,0.35);
+        }
+        .type-toggle::before {
+            content: "";
+            position: absolute; left: 0; right: 0; top: 0; height: 48%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0));
+            border-radius: 16px 16px 60% 60% / 16px 16px 24px 24px;
+            pointer-events: none;
+        }
+        @keyframes liquidFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .type-liquid {
+            position: absolute; top: 5px; bottom: 5px; left: 5px;
+            width: calc(50% - 5px);
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(226,240,255,0.92));
+            box-shadow: 0 4px 12px rgba(8,25,70,0.30), inset 0 1px 2px #ffffff;
+            transition: transform 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
+        }
+        .type-toggle[data-active="expense"] .type-liquid { transform: translateX(100%); }
+        .type-opt {
+            position: relative; z-index: 1;
+            background: none; border: none; cursor: pointer;
+            padding: 11px 6px; font-size: 0.95rem; font-weight: 800;
+            letter-spacing: 0.01em; transition: color 0.25s, text-shadow 0.25s;
+        }
+        .type-income { color: #bbf7d0; }
+        .type-expense { color: #fecaca; }
+        .type-toggle[data-active="income"] .type-income { color: #15803d; text-shadow: none; }
+        .type-toggle[data-active="expense"] .type-expense { color: #dc2626; text-shadow: none; }
     </style>
 </head>
 <body>
@@ -1701,7 +1743,12 @@
             <form id="recordForm">
                 <div class="form-field">
                     <label>Type</label>
-                    <select id="recType">
+                    <div class="type-toggle" id="typeToggle" data-active="income" role="group" aria-label="Record type">
+                        <span class="type-liquid" aria-hidden="true"></span>
+                        <button type="button" data-type="income" class="type-opt type-income">Income (+)</button>
+                        <button type="button" data-type="expense" class="type-opt type-expense">Expense (&minus;)</button>
+                    </div>
+                    <select id="recType" style="display:none;" tabindex="-1" aria-hidden="true">
                         <option value="income">Income (+)</option>
                         <option value="expense">Expense (-)</option>
                     </select>
@@ -1710,20 +1757,51 @@
                     <label>Account</label>
                     <select id="recAccount">
                         <option value="Cash">Cash</option>
-                        <option value="Abay Bank">Abay Bank</option>
-                        <option value="Abyssinia">Abyssinia</option>
-                        <option value="Addis Bank">Addis Bank</option>
-                        <option value="Ahadu Bank">Ahadu Bank</option>
-                        <option value="Amhara Bank">Amhara Bank</option>
-                        <option value="Awash Bank">Awash Bank</option>
-                        <option value="Birhan Bank">Birhan Bank</option>
-                        <option value="Buna Bank">Buna Bank</option>
-                        <option value="CBE">CBE</option>
-                        <option value="Coop Bank">Coop Bank</option>
-                        <option value="Dashen Bank">Dashen Bank</option>
-                        <option value="Enat Bank">Enat Bank</option>
-                        <option value="Gaada Bank">Gaada Bank</option>
-                        <option value="Global Bank">Global Bank</option>
+                        <optgroup label="Banks">
+                            <option value="Abay Bank">Abay Bank</option>
+                            <option value="Abyssinia">Abyssinia</option>
+                            <option value="Addis Bank">Addis Bank</option>
+                            <option value="Ahadu Bank">Ahadu Bank</option>
+                            <option value="Amhara Bank">Amhara Bank</option>
+                            <option value="Awash Bank">Awash Bank</option>
+                            <option value="Berhan Bank">Berhan Bank</option>
+                            <option value="Buna Bank">Buna Bank</option>
+                            <option value="CBE">CBE</option>
+                            <option value="Coop Bank">Coop Bank</option>
+                            <option value="Dashen Bank">Dashen Bank</option>
+                            <option value="Debub Global Bank">Debub Global Bank</option>
+                            <option value="Development Bank of Ethiopia">Development Bank of Ethiopia</option>
+                            <option value="Enat Bank">Enat Bank</option>
+                            <option value="Gaada Bank">Gaada Bank</option>
+                            <option value="Global Bank">Global Bank</option>
+                            <option value="Goh Betoch Bank">Goh Betoch Bank</option>
+                            <option value="Hibret Bank (United)">Hibret Bank (United)</option>
+                            <option value="Hijra Bank">Hijra Bank</option>
+                            <option value="Lion Bank">Lion Bank</option>
+                            <option value="Nib Bank">Nib Bank</option>
+                            <option value="Oromia Bank">Oromia Bank</option>
+                            <option value="Rammis Bank">Rammis Bank</option>
+                            <option value="Shabelle Bank">Shabelle Bank</option>
+                            <option value="Sidama Bank">Sidama Bank</option>
+                            <option value="Siinqee Bank">Siinqee Bank</option>
+                            <option value="Tsedey Bank">Tsedey Bank</option>
+                            <option value="Tsehay Bank">Tsehay Bank</option>
+                            <option value="Wegagen Bank">Wegagen Bank</option>
+                            <option value="ZamZam Bank">ZamZam Bank</option>
+                            <option value="Zemen Bank">Zemen Bank</option>
+                        </optgroup>
+                        <optgroup label="Mobile wallets">
+                            <option value="telebirr">telebirr</option>
+                            <option value="M-PESA">M-PESA</option>
+                            <option value="CBE Birr">CBE Birr</option>
+                            <option value="HelloCash">HelloCash</option>
+                            <option value="Amole">Amole</option>
+                            <option value="Kacha">Kacha</option>
+                            <option value="Awash Birr">Awash Birr</option>
+                            <option value="YaYa Wallet">YaYa Wallet</option>
+                            <option value="Other Mobile Wallet">Other Mobile Wallet</option>
+                        </optgroup>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div class="form-field">
@@ -3447,6 +3525,30 @@
             catSelect.innerHTML = list.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
             if (list.includes(prev)) catSelect.value = prev;
         }
+
+        // ---- Blue liquid Income / Expense switch (keeps the hidden #recType select in sync) ----
+        const typeToggleEl = document.getElementById('typeToggle');
+        const typeSelectEl = document.getElementById('recType');
+        function syncTypeToggle() {
+            typeToggleEl.dataset.active = typeSelectEl.value === 'expense' ? 'expense' : 'income';
+        }
+        (function hookTypeSelectValue() {
+            const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+            Object.defineProperty(typeSelectEl, 'value', {
+                configurable: true,
+                get() { return desc.get.call(this); },
+                set(v) { desc.set.call(this, v); syncTypeToggle(); }
+            });
+        })();
+        typeToggleEl.querySelectorAll('.type-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                typeSelectEl.value = btn.dataset.type;
+                typeSelectEl.dispatchEvent(new Event('change'));
+            });
+        });
+        document.getElementById('recordForm').addEventListener('reset', () => setTimeout(syncTypeToggle, 0));
+        new MutationObserver(syncTypeToggle).observe(document.getElementById('recordModal'), { attributes: true, attributeFilter: ['class'] });
+        syncTypeToggle();
 
         const recTypeSelectEl = document.getElementById('recType');
         if (recTypeSelectEl) {
