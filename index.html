@@ -576,6 +576,8 @@
             cursor: pointer;
         }
 
+        .record-right .trash-btn { width: 34px; height: 34px; }
+
         /* Report View */
         .segmented-control {
             background: var(--card-bg);
@@ -3407,6 +3409,9 @@
                         </div>
                         <div class="record-right">
                             <span class="${isInc ? 'amount-pos' : 'amount-neg'}">${isInc ? '+ ' : '- '}${formatMoney(rec.amount)}</span>
+                            <button class="trash-btn" onclick="deleteRecord(${rec.id})" aria-label="Delete this record">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
                         </div>
                     `;
                     recentList.appendChild(card);
@@ -3572,6 +3577,12 @@
         }
 
         function deleteRecord(id) {
+            const target = records.find(r => r.id === id);
+            if (target) {
+                const sign = target.type === 'income' ? '+' : '-';
+                const label = `${target.category} (${sign}${Number(target.amount).toLocaleString('en-US')} ${settings.currency})`;
+                if (!confirm(`Delete this record?\n${label}`)) return;
+            }
             markIdDeleted(currentUserEmail, id);
             records = records.filter(r => r.id !== id);
             saveUserState();
